@@ -82,6 +82,12 @@ QVariant ComputerModel::data(const QModelIndex& index, int role) const
                tr("Running Game ID: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->currentGameId) : tr("Unknown")) + '\n' +
                tr("HTTPS Port: %1").arg(computer->state == NvComputer::CS_ONLINE ? QString::number(computer->activeHttpsPort) : tr("Unknown"));
     }
+    case IsApolloRole:
+        return !computer->isNvidiaServerSoftware;
+    case HostIpRole:
+        return computer->activeAddress.toString();
+    case GpuModelRole:
+        return computer->gpuModel.isEmpty() ? QString("Host GPU") : computer->gpuModel;
     default:
         return QVariant();
     }
@@ -110,6 +116,9 @@ QHash<int, QByteArray> ComputerModel::roleNames() const
     names[StatusUnknownRole] = "statusUnknown";
     names[ServerSupportedRole] = "serverSupported";
     names[DetailsRole] = "details";
+    names[IsApolloRole] = "isApollo";
+    names[HostIpRole] = "hostIp";
+    names[GpuModelRole] = "gpuModel";
 
     return names;
 }

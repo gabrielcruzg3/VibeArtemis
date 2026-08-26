@@ -235,19 +235,54 @@ ApplicationWindow {
 
     header: ToolBar {
         id: toolBar
-        height: 60
-        anchors.topMargin: 5
-        anchors.bottomMargin: 5
+        height: 64
+        Material.background: "#0c1220"
 
-        Label {
-            id: titleLabel
-            visible: toolBar.width > 700
+        Rectangle {
             anchors.fill: parent
-            text: stackView.currentItem.objectName
-            font.pointSize: 20
-            elide: Label.ElideRight
-            horizontalAlignment: Qt.AlignHCenter
-            verticalAlignment: Qt.AlignVCenter
+            color: "#0c1220"
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: 2
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+                    GradientStop { position: 0.0; color: "#a855f7" }
+                    GradientStop { position: 0.5; color: "#38bdf8" }
+                    GradientStop { position: 1.0; color: "#ec4899" }
+                }
+            }
+        }
+
+        Row {
+            anchors.centerIn: parent
+            visible: toolBar.width > 700
+            spacing: 8
+
+            Rectangle {
+                width: 26; height: 26; radius: 6
+                color: "#7c3aed"
+                anchors.verticalCenter: parent.verticalCenter
+
+                Text {
+                    anchors.centerIn: parent
+                    text: "VA"
+                    font.bold: true
+                    font.pixelSize: 11
+                    color: "#ffffff"
+                }
+            }
+
+            Label {
+                id: titleLabel
+                text: stackView.currentItem ? stackView.currentItem.objectName : "VibeArtemis"
+                font.pixelSize: 18
+                font.bold: true
+                color: "#f8fafc"
+                anchors.verticalCenter: parent.verticalCenter
+            }
         }
 
         RowLayout {

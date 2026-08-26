@@ -107,57 +107,164 @@ CenteredGridView {
     model: computerModel
 
     delegate: NavigableItemDelegate {
+        id: hostCardDelegate
         width: 300; height: 320;
         grid: pcGrid
 
         property alias pcContextMenu : pcContextMenuLoader.item
 
-        Image {
-            id: pcIcon
-            anchors.horizontalCenter: parent.horizontalCenter
-            source: "qrc:/res/desktop_windows-48px.svg"
-            sourceSize {
-                width: 200
-                height: 200
+        Rectangle {
+            id: cardBackground
+            anchors.fill: parent
+            anchors.margins: 6
+            radius: 16
+            color: hostCardDelegate.activeFocus ? "#1e2640" : (hostCardDelegate.hovered ? "#161e33" : "#0f1626")
+            border.color: hostCardDelegate.activeFocus ? "#a855f7" : (hostCardDelegate.hovered ? "#38bdf8" : "rgba(255, 255, 255, 0.1)")
+            border.width: hostCardDelegate.activeFocus ? 2 : 1
+
+            Behavior on color { ColorAnimation { duration: 150 } }
+            Behavior on border.color { ColorAnimation { duration: 150 } }
+
+            // --- Card Header: Apollo Badge & Status Pill ---
+            Row {
+                anchors.top: parent.top
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 12
+                spacing: 8
+
+                // Apollo / Sunshine Badge
+                Rectangle {
+                    height: 22
+                    width: isApolloText.width + 14
+                    radius: 6
+                    color: model.isApollo ? "#6366f1" : "#0284c7"
+
+                    Text {
+                        id: isApolloText
+                        anchors.centerIn: parent
+                        text: model.isApollo ? "APOLLO" : "HOST"
+                        font.bold: true
+                        font.pixelSize: 10
+                        color: "#ffffff"
+                    }
+                }
+
+                Item { Layout.fillWidth: true; width: cardBackground.width - 24 - 150 }
+
+                // Status Pill
+                Rectangle {
+                    height: 22
+                    width: statusRow.width + 12
+                    radius: 11
+                    color: model.online ? (model.paired ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)") : "rgba(100, 116, 139, 0.2)"
+                    border.color: model.online ? (model.paired ? "#10b981" : "#f59e0b") : "#64748b"
+                    border.width: 1
+
+                    Row {
+                        id: statusRow
+                        anchors.centerIn: parent
+                        spacing: 5
+
+                        Rectangle {
+                            width: 6; height: 6; radius: 3
+                            color: model.online ? (model.paired ? "#10b981" : "#f59e0b") : "#64748b"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Text {
+                            text: model.statusUnknown ? qsTr("Checking...") : (model.online ? (model.paired ? qsTr("Online") : qsTr("Pairing")) : qsTr("Offline"))
+                            font.pixelSize: 10
+                            font.bold: true
+                            color: model.online ? (model.paired ? "#34d399" : "#fbbf24") : "#94a3b8"
+                        }
+                    }
+                }
             }
-        }
 
-        Image {
-            // TODO: Tooltip
-            id: stateIcon
-            anchors.horizontalCenter: pcIcon.horizontalCenter
-            anchors.verticalCenter: pcIcon.verticalCenter
-            anchors.verticalCenterOffset: !model.online ? -18 : -16
-            visible: !model.statusUnknown && (!model.online || !model.paired)
-            source: !model.online ? "qrc:/res/warning_FILL1_wght300_GRAD200_opsz24.svg" : "qrc:/res/baseline-lock-24px.svg"
-            sourceSize {
-                width: !model.online ? 75 : 70
-                height: !model.online ? 75 : 70
+            // --- Center Host Icon ---
+            Image {
+                id: pcIcon
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+                anchors.topMargin: 48
+                source: "qrc:/res/desktop_windows-48px.svg"
+                sourceSize {
+                    width: 110
+                    height: 110
+                }
+                opacity: model.online ? 1.0 : 0.45
             }
-        }
 
-        BusyIndicator {
-            id: statusUnknownSpinner
-            anchors.horizontalCenter: pcIcon.horizontalCenter
-            anchors.verticalCenter: pcIcon.verticalCenter
-            anchors.verticalCenterOffset: -15
-            width: 75
-            height: 75
-            visible: model.statusUnknown
-            running: visible
-        }
+            Image {
+                id: stateIcon
+                anchors.horizontalCenter: pcIcon.horizontalCenter
+                anchors.verticalCenter: pcIcon.verticalCenter
+                visible: !model.statusUnknown && (!model.online || !model.paired)
+                source: !model.online ? "qrc:/res/warning_FILL1_wght300_GRAD200_opsz24.svg" : "qrc:/res/baseline-lock-24px.svg"
+                sourceSize {
+                    width: 48
+                    height: 48
+                }
+            }
 
-        Label {
-            id: pcNameText
-            text: model.name
+            BusyIndicator {
+                id: statusUnknownSpinner
+                anchors.centerIn: pcIcon
+                width: 48
+                height: 48
+                visible: model.statusUnknown
+                running: visible
+            }
 
-            width: parent.width
-            anchors.top: pcIcon.bottom
-            anchors.bottom: parent.bottom
-            font.pointSize: 36
-            horizontalAlignment: Text.AlignHCenter
-            wrapMode: Text.Wrap
-            elide: Text.ElideRight
+            // --- Host Name & Subtext ---
+            Column {
+                anchors.top: pcIcon.bottom
+                anchors.topMargin: 10
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 12
+                spacing: 3
+
+                Label {
+                    id: pcNameText
+                    text: model.name
+                    width: parent.width
+                    font.pixelSize: 18
+                    font.bold: true
+                    horizontalAlignment: Text.AlignHCenter
+                    color: "#ffffff"
+                    elide: Text.ElideRight
+                }
+
+                Label {
+                    text: model.hostIp ? model.hostIp : "127.0.0.1"
+                    width: parent.width
+                    font.pixelSize: 12
+                    horizontalAlignment: Text.AlignHCenter
+                    color: "#94a3b8"
+                    elide: Text.ElideRight
+                }
+            }
+
+            // --- Bottom Quick Action Button ---
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 12
+                height: 32
+                radius: 8
+                color: model.online ? (model.paired ? (hostCardDelegate.hovered ? "#9333ea" : "#7c3aed") : "#d97706") : "#334155"
+
+                Text {
+                    anchors.centerIn: parent
+                    text: model.online ? (model.paired ? qsTr("Connect") : qsTr("Pair Host")) : qsTr("Options")
+                    font.pixelSize: 12
+                    font.bold: true
+                    color: "#ffffff"
+                }
+            }
         }
 
         Loader {
