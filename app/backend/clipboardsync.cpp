@@ -1,5 +1,5 @@
-#include "app/backend/clipboardsync.h"
-#include "app/backend/nvhttp.h"
+#include "backend/clipboardsync.h"
+#include "backend/nvhttp.h"
 #include <QDebug>
 
 namespace vibeartemis {

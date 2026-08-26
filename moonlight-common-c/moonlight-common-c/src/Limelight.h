@@ -154,21 +154,25 @@ typedef struct _DECODE_UNIT {
     // (happens when the frame is repeated).
     uint16_t frameHostProcessingLatency;
 
-    // Receive time of first buffer. This value uses an implementation-defined epoch,
-    // but the same epoch as enqueueTimeMs and LiGetMillis().
-    uint64_t receiveTimeMs;
+    // Receive time of first buffer in microseconds.
+    uint64_t receiveTimeUs;
 
     // Time the frame was fully assembled and queued for the video decoder to process.
     // This is also approximately the same time as the final packet was received, so
-    // enqueueTimeMs - receiveTimeMs is the time taken to receive the frame. At the
+    // enqueueTimeUs - receiveTimeUs is the time taken to receive the frame. At the
     // time the decode unit is passed to submitDecodeUnit(), the total queue delay
-    // can be calculated by LiGetMillis() - enqueueTimeMs.
-    uint64_t enqueueTimeMs;
+    // can be calculated. This value is in microseconds.
+    uint64_t enqueueTimeUs;
 
-    // Presentation time in milliseconds with the epoch at the first captured frame.
+    // Presentation time in microseconds with the epoch at the first captured frame.
     // This can be used to aid frame pacing or to drop old frames that were queued too
     // long prior to display.
-    unsigned int presentationTimeMs;
+    uint64_t presentationTimeUs;
+
+    // Original RTP timestamp in 90kHz units. Useful when using APIs that deal with integer
+    // time such as Apple's CMTime. To exactly recover the RTP timestamp, use something like
+    // CMTimeMake((int64_t)du->rtpTimestamp, 90000);
+    uint32_t rtpTimestamp;
 
     // Length of the entire buffer chain in bytes
     int fullLength;
@@ -565,12 +569,9 @@ const char* LiGetStageName(int stage);
 // This function may only be called between LiStartConnection() and LiStopConnection().
 bool LiGetEstimatedRttInfo(uint32_t* estimatedRtt, uint32_t* estimatedRttVariance);
 
-// This function sends a request to the server to execute the requested cmd id.
+// Apollo Server Command and heartbeat
 int LiSendExecServerCmd(uint8_t cmdId);
-
-// This function sends an empty payload to the server.
-// This method exists here for workaround client side wifi sleeps.
-int LiSendEmptyPayload();
+int LiSendEmptyPayload(void);
 
 // This function queues a relative mouse move event to be sent to the remote server.
 int LiSendMouseMoveEvent(short deltaX, short deltaY);
@@ -776,6 +777,7 @@ int LiSendMultiControllerEvent(short controllerNumber, short activeGamepadMask,
 #define LI_CTYPE_XBOX     0x01
 #define LI_CTYPE_PS       0x02
 #define LI_CTYPE_NINTENDO 0x03
+#define LI_CTYPE_STEAM    0x04 // Valve Steam Controller (Xbox-style layout plus dual touchpads, gyro/accel and grip buttons)
 #define LI_CCAP_ANALOG_TRIGGERS 0x01 // Reports values between 0x00 and 0xFF for trigger axes
 #define LI_CCAP_RUMBLE          0x02 // Can rumble in response to ConnListenerRumble() callback
 #define LI_CCAP_TRIGGER_RUMBLE  0x04 // Can rumble triggers in response to ConnListenerRumbleTriggers() callback
@@ -784,6 +786,7 @@ int LiSendMultiControllerEvent(short controllerNumber, short activeGamepadMask,
 #define LI_CCAP_GYRO            0x20 // Can report gyroscope events via LiSendControllerMotionEvent()
 #define LI_CCAP_BATTERY_STATE   0x40 // Reports battery state via LiSendControllerBatteryEvent()
 #define LI_CCAP_RGB_LED         0x80 // Can set RGB LED state via ConnListenerSetControllerLED()
+#define LI_CCAP_DUAL_TOUCHPAD  0x100 // Reports touchpad events from 2 separate touchpads
 int LiSendControllerArrivalEvent(uint8_t controllerNumber, uint16_t activeGamepadMask, uint8_t type,
                                  uint32_t supportedButtonFlags, uint16_t capabilities);
 
@@ -796,6 +799,13 @@ int LiSendControllerArrivalEvent(uint8_t controllerNumber, uint16_t activeGamepa
 // To determine if LiSendControllerTouchEvent() is supported without calling it, call LiGetHostFeatureFlags()
 // and check for the LI_FF_CONTROLLER_TOUCH_EVENTS flag.
 int LiSendControllerTouchEvent(uint8_t controllerNumber, uint8_t eventType, uint32_t pointerId, float x, float y, float pressure);
+
+// This function is similar to LiSendControllerTouchEvent(), but it allows the touchpad index to be
+// provided for use with controllers that have multiple touchpads (like the Steam Controller).
+//
+// The only valid touchpad indices are currently 0 (support indicated by LI_CCAP_TOUCHPAD) and 1
+// (support indicated by LI_CCAP_DUAL_TOUCHPAD).
+int LiSendControllerTouchEvent2(uint8_t controllerNumber, uint8_t eventType, uint8_t touchpadIndex, uint32_t pointerId, float x, float y, float pressure);
 
 // This function allows clients to send controller-associated motion events to a supported host.
 //
@@ -840,7 +850,12 @@ int LiSendHighResScrollEvent(short scrollAmount);
 int LiSendHScrollEvent(signed char scrollClicks);
 int LiSendHighResHScrollEvent(short scrollAmount);
 
+// This function returns a time in microseconds with an implementation-defined epoch.
+// It should only ever be compared with the return value from a previous call to itself.
+uint64_t LiGetMicroseconds(void);
+
 // This function returns a time in milliseconds with an implementation-defined epoch.
+// It should only ever be compared with the return value from a previous call to itself.
 uint64_t LiGetMillis(void);
 
 // This is a simplistic STUN function that can assist clients in getting the WAN address
@@ -862,6 +877,36 @@ int LiGetPendingAudioFrames(void);
 // milliseconds rather than frames, which allows callers to be agnostic of the
 // negotiated audio frame duration.
 int LiGetPendingAudioDuration(void);
+
+// Returns a pointer to a struct containing various statistics about the RTP audio stream.
+// The data should be considered read-only and must not be modified.
+typedef struct _RTP_AUDIO_STATS {
+    uint32_t packetCountAudio;         // total audio packets
+    uint32_t packetCountFec;           // total packets of type FEC
+    uint32_t packetCountFecRecovered;  // a packet was saved
+    uint32_t packetCountFecFailed;     // tried to recover but too much was lost
+    uint32_t packetCountOOS;           // out-of-sequence packets
+    uint32_t packetCountInvalid;       // corrupted packets, etc
+    uint32_t packetCountFecInvalid;    // invalid FEC packet
+} RTP_AUDIO_STATS, *PRTP_AUDIO_STATS;
+
+const RTP_AUDIO_STATS* LiGetRTPAudioStats(void);
+
+// Returns a pointer to a struct containing various statistics about the RTP video stream.
+// The data should be considered read-only and must not be modified.
+// Right now this is mainly used to track total video and FEC packets, as there are
+// many video stats already implemented at a higher level in moonlight-qt.
+typedef struct _RTP_VIDEO_STATS {
+    uint32_t packetCountVideo;         // total video packets
+    uint32_t packetCountFec;           // total packets of type FEC
+    uint32_t packetCountFecRecovered;  // a packet was saved
+    uint32_t packetCountFecFailed;     // tried to recover but too much was lost
+    uint32_t packetCountOOS;           // out-of-sequence packets
+    uint32_t packetCountInvalid;       // corrupted packets, etc
+    uint32_t packetCountFecInvalid;    // invalid FEC packet
+} RTP_VIDEO_STATS, *PRTP_VIDEO_STATS;
+
+const RTP_VIDEO_STATS* LiGetRTPVideoStats(void);
 
 // Port index flags for use with LiGetPortFromPortFlagIndex() and LiGetProtocolFromPortFlagIndex()
 #define ML_PORT_INDEX_TCP_47984 0
@@ -890,7 +935,7 @@ int LiGetPendingAudioDuration(void);
 unsigned int LiGetPortFlagsFromStage(int stage);
 unsigned int LiGetPortFlagsFromTerminationErrorCode(int errorCode);
 
-// Returns the IPPROTO_* value for the specified port index 
+// Returns the IPPROTO_* value for the specified port index
 int LiGetProtocolFromPortFlagIndex(int portFlagIndex);
 
 // Returns the port number for the specified port index

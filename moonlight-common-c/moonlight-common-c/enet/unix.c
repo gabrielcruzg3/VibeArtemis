@@ -2,7 +2,7 @@
  @file  unix.c
  @brief ENet Unix system specific functions
 */
-#ifndef _WIN32
+#if !defined(_WIN32) || defined(NXDK)
 
 // Required for IPV6_PKTINFO with Darwin headers
 #ifndef __APPLE_USE_RFC_3542
@@ -104,7 +104,37 @@
 #ifndef NO_MSGAPI
 #define NO_MSGAPI 1
 #endif
+#elif defined(NXDK)
+#ifndef HAS_POLL
+#define HAS_POLL 1
+#endif
+#ifndef HAS_FCNTL
+#define HAS_FCNTL 1
+#endif
+#ifndef HAS_IOCTL
+#define HAS_IOCTL 1
+#endif
+#ifndef HAS_INET_PTON
+#define HAS_INET_PTON 1
+#endif
+#ifndef HAS_INET_NTOP
+#define HAS_INET_NTOP 1
+#endif
+#ifndef HAS_SOCKLEN_T
+#define HAS_SOCKLEN_T 1
+#endif
+#ifndef HAS_GETADDRINFO
+#define HAS_GETADDRINFO 1
+#endif
+#ifndef HAS_GETNAMEINFO
+#define HAS_GETNAMEINFO 1
+#endif
+#ifndef NO_MSGAPI
+#define NO_MSGAPI 1
+#endif
 #elif defined(__3DS__)
+#include <3ds/os.h>
+#include <3ds/svc.h>
 #ifdef AF_INET6
 #undef AF_INET6
 #endif
@@ -270,6 +300,30 @@ enet_address_equal (ENetAddress * address1, ENetAddress * address2)
 }
 
 int
+enet_address_wildcard (const ENetAddress * address)
+{
+    switch (address -> address.ss_family)
+    {
+    case AF_INET:
+    {
+        struct sockaddr_in *sin = (struct sockaddr_in *) & address -> address;
+        return sin -> sin_addr.s_addr == INADDR_ANY;
+    }
+#ifdef AF_INET6
+    case AF_INET6:
+    {
+        struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) & address -> address;
+        return ! memcmp (& sin6 -> sin6_addr, & in6addr_any, sizeof (in6addr_any));
+    }
+#endif
+    default:
+    {
+        return 0;
+    }
+    }
+}
+
+int
 enet_address_set_port (ENetAddress * address, enet_uint16 port)
 {
     if (address -> address.ss_family == AF_INET)
@@ -380,6 +434,12 @@ enet_socket_create (int af, ENetSocketType type)
         int on = 1;
         setsockopt(sock, IPPROTO_IP, IP_PKTINFO, (char *)&on, sizeof(on));
     }
+#elif defined(IP_RECVDSTADDR)
+    // FreeBSD uses IP_RECVDSTADDR instead of IP_PKTINFO when struct in_pktinfo is not available
+    {
+        int on = 1;
+        setsockopt(sock, IPPROTO_IP, IP_RECVDSTADDR, (char *)&on, sizeof(on));
+    }
 #endif
 
 #ifdef IPV6_RECVPKTINFO
@@ -408,7 +468,7 @@ enet_socket_set_option (ENetSocket socket, ENetSocketOption option, int value)
     {
         case ENET_SOCKOPT_NONBLOCK:
 #ifdef HAS_FCNTL
-            result = fcntl (socket, F_SETFL, (value ? O_NONBLOCK : 0) | (fcntl (socket, F_GETFL) & ~O_NONBLOCK));
+            result = fcntl (socket, F_SETFL, (value ? O_NONBLOCK : 0) | (fcntl (socket, F_GETFL, 0) & ~O_NONBLOCK));
 #else
 #ifdef HAS_IOCTL
             result = ioctl (socket, FIONBIO, & value);
@@ -633,6 +693,20 @@ enet_socket_send (ENetSocket socket,
             chdr->cmsg_len = CMSG_LEN(sizeof(pktInfo));
             memcpy(CMSG_DATA(chdr), &pktInfo, sizeof(pktInfo));
         }
+#elif defined(IP_SENDSRCADDR)
+        // FreeBSD uses IP_SENDSRCADDR with struct in_addr instead of IP_PKTINFO
+        if (localAddress->address.ss_family == AF_INET) {
+            struct in_addr srcAddr = ((struct sockaddr_in*)&localAddress->address)->sin_addr;
+
+            msgHdr.msg_control = controlBufData;
+            msgHdr.msg_controllen = CMSG_SPACE(sizeof(srcAddr));
+
+            struct cmsghdr *chdr = CMSG_FIRSTHDR(&msgHdr);
+            chdr->cmsg_level = IPPROTO_IP;
+            chdr->cmsg_type = IP_SENDSRCADDR;
+            chdr->cmsg_len = CMSG_LEN(sizeof(srcAddr));
+            memcpy(CMSG_DATA(chdr), &srcAddr, sizeof(srcAddr));
+        }
 #endif
 #ifdef IPV6_PKTINFO
         if (localAddress->address.ss_family == AF_INET6) {
@@ -671,7 +745,9 @@ enet_socket_send (ENetSocket socket,
         case EADDRNOTAVAIL:
         case ENETDOWN:
         case ENETUNREACH:
+#if !defined(EHOSTDOWN) || (EHOSTDOWN != EHOSTUNREACH)
         case EHOSTDOWN:
+#endif
         case EHOSTUNREACH:
             return 0;
 
@@ -750,6 +826,17 @@ enet_socket_receive (ENetSocket socket,
 
                 localAddr->sin_family = AF_INET;
                 localAddr->sin_addr = ((struct in_pktinfo*)CMSG_DATA(chdr))->ipi_addr;
+
+                localAddress->addressLength = sizeof(*localAddr);
+                break;
+            }
+#elif defined(IP_RECVDSTADDR)
+            // FreeBSD uses IP_RECVDSTADDR with struct in_addr instead of IP_PKTINFO
+            if (chdr->cmsg_level == IPPROTO_IP && chdr->cmsg_type == IP_RECVDSTADDR) {
+                struct sockaddr_in *localAddr = (struct sockaddr_in*)&localAddress->address;
+
+                localAddr->sin_family = AF_INET;
+                localAddr->sin_addr = *((struct in_addr*)CMSG_DATA(chdr));
 
                 localAddress->addressLength = sizeof(*localAddr);
                 break;

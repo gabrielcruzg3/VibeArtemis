@@ -168,7 +168,8 @@ typedef struct _SS_CONTROLLER_TOUCH_PACKET {
     NV_INPUT_HEADER header;
     uint8_t controllerNumber;
     uint8_t eventType;
-    uint8_t zero[2]; // Alignment/reserved
+    uint8_t zero; // Alignment/reserved
+    uint8_t touchpadIndex;
     uint32_t pointerId;
     netfloat x;
     netfloat y;
@@ -194,12 +195,5 @@ typedef struct _SS_CONTROLLER_BATTERY_PACKET {
     uint8_t batteryPercentage;
     uint8_t zero[1]; // Alignment/reserved
 } SS_CONTROLLER_BATTERY_PACKET, *PSS_CONTROLLER_BATTERY_PACKET;
-
-#define AP_SERVER_CMD_MAGIC 0x80000000
-typedef struct _AP_SERVER_CMD_PACKET {
-    NV_INPUT_HEADER header;
-    uint8_t cmdId;
-    uint8_t zero[3]; // Alignment/reserved
-} AP_SERVER_CMD_PACKET, *PAP_SERVER_CMD_PACKET;
 
 #pragma pack(pop)

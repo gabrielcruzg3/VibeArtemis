@@ -1,13 +1,13 @@
-/** 
+/**
  @file  win32.c
  @brief ENet Win32 system specific functions
 */
-#ifdef _WIN32
+#if defined(_WIN32) && !defined(NXDK)
 
 #define ENET_BUILDING_LIB 1
 #include "enet/enet.h"
 #include <windows.h>
-#include <Mswsock.h>
+#include <mswsock.h>
 #ifndef HAS_QOS_FLOWID
 typedef UINT32 QOS_FLOWID;
 #endif
@@ -23,7 +23,7 @@ static enet_uint32 timeBase = 0;
 
 #if !(defined(WINAPI_FAMILY) && WINAPI_FAMILY == WINAPI_FAMILY_APP)
 # define HAS_QWAVE
-# include <VersionHelpers.h>
+# include <versionhelpers.h>
 #else
 # define IsWindows10OrGreater() TRUE
 #endif
@@ -51,7 +51,7 @@ enet_initialize (void)
 {
     WORD versionRequested = MAKEWORD (2, 0);
     WSADATA wsaData;
-   
+
     if (WSAStartup (versionRequested, & wsaData))
        return -1;
 
@@ -59,7 +59,7 @@ enet_initialize (void)
         HIBYTE (wsaData.wVersion) != 0)
     {
        WSACleanup ();
-       
+
        return -1;
     }
 
@@ -191,6 +191,28 @@ enet_address_equal (ENetAddress * address1, ENetAddress * address2)
 }
 
 int
+enet_address_wildcard (const ENetAddress * address)
+{
+    switch (address -> address.ss_family)
+    {
+    case AF_INET:
+    {
+        struct sockaddr_in *sin = (struct sockaddr_in *) & address -> address;
+        return sin -> sin_addr.S_un.S_addr == INADDR_ANY;
+    }
+    case AF_INET6:
+    {
+        struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) & address -> address;
+        return ! memcmp (& sin6 -> sin6_addr, & in6addr_any, sizeof (in6addr_any));
+    }
+    default:
+    {
+        return 0;
+    }
+    }
+}
+
+int
 enet_address_set_host (ENetAddress * address, const char * name)
 {
     struct addrinfo hints, * resultList = NULL, * result = NULL;
@@ -206,9 +228,9 @@ enet_address_set_host (ENetAddress * address, const char * name)
     {
         memcpy (& address -> address, result -> ai_addr, result -> ai_addrlen);
         address -> addressLength = result -> ai_addrlen;
-        
+
         freeaddrinfo (resultList);
-        
+
         return 0;
     }
 
@@ -407,10 +429,10 @@ enet_socket_accept (ENetSocket socket, ENetAddress * address)
     if (address != NULL)
       address -> addressLength = sizeof (address -> address);
 
-    result = accept (socket, 
-                     address != NULL ? (struct sockaddr *) & address -> address : NULL, 
+    result = accept (socket,
+                     address != NULL ? (struct sockaddr *) & address -> address : NULL,
                      address != NULL ? & address -> addressLength : NULL);
-    
+
     if (result == -1)
       return ENET_SOCKET_NULL;
 
@@ -675,10 +697,10 @@ enet_socket_wait (ENetSocket socket, enet_uint32 * condition, enet_uint32 timeou
     fd_set readSet, writeSet;
     struct timeval timeVal;
     int selectCount;
-    
+
     timeVal.tv_sec = timeout / 1000;
     timeVal.tv_usec = (timeout % 1000) * 1000;
-    
+
     FD_ZERO (& readSet);
     FD_ZERO (& writeSet);
 
@@ -700,12 +722,12 @@ enet_socket_wait (ENetSocket socket, enet_uint32 * condition, enet_uint32 timeou
 
     if (FD_ISSET (socket, & writeSet))
       * condition |= ENET_SOCKET_WAIT_SEND;
-    
+
     if (FD_ISSET (socket, & readSet))
       * condition |= ENET_SOCKET_WAIT_RECEIVE;
 
     return 0;
-} 
+}
 
 #endif
 

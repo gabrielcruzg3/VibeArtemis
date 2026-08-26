@@ -31,11 +31,12 @@ typedef struct _NVCTL_ENCRYPTED_PACKET_HEADER {
     // encrypted NVCTL_ENET_PACKET_HEADER_V2 and payload data follow
 } NVCTL_ENCRYPTED_PACKET_HEADER, *PNVCTL_ENCRYPTED_PACKET_HEADER;
 
-typedef struct _QUEUED_FRAME_INVALIDATION_TUPLE {
+typedef struct _QUEUED_REFERENCE_FRAME_CONTROL {
     uint32_t startFrame;
     uint32_t endFrame;
+    bool invalidate; // true: RFI(startFrame, endFrame); false: LTR_ACK(startFrame)
     LINKED_BLOCKING_QUEUE_ENTRY entry;
-} QUEUED_FRAME_INVALIDATION_TUPLE, *PQUEUED_FRAME_INVALIDATION_TUPLE;
+} QUEUED_REFERENCE_FRAME_CONTROL, *PQUEUED_REFERENCE_FRAME_CONTROL;
 
 typedef struct _QUEUED_FRAME_FEC_STATUS {
     SS_FRAME_FEC_STATUS fecStatus;
@@ -113,7 +114,7 @@ static int lastConnectionStatusUpdate;
 static uint32_t currentEnetSequenceNumber;
 static uint64_t firstFrameTimeMs;
 
-static LINKED_BLOCKING_QUEUE invalidReferenceFrameTuples;
+static LINKED_BLOCKING_QUEUE referenceFrameControlQueue;
 static LINKED_BLOCKING_QUEUE frameFecStatusQueue;
 static LINKED_BLOCKING_QUEUE asyncCallbackQueue;
 static PLT_EVENT idrFrameRequiredEvent;
@@ -138,10 +139,8 @@ static PPLT_CRYPTO_CONTEXT decryptionCtx;
 #define IDX_RUMBLE_TRIGGER_DATA 9
 #define IDX_SET_MOTION_EVENT 10
 #define IDX_SET_RGB_LED 11
-#define IDX_EXEC_SERVER_CMD 12
-#define IDX_SET_CLIPBOARD 13
-#define IDX_FILE_TRANSFER_NONCE_REQUEST 14
-#define IDX_DS_ADAPTIVE_TRIGGERS 15
+#define IDX_DS_ADAPTIVE_TRIGGERS 12
+#define IDX_EXEC_SERVER_CMD 13
 
 #define CONTROL_STREAM_TIMEOUT_SEC 10
 #define CONTROL_STREAM_LINGER_TIMEOUT_SEC 2
@@ -159,10 +158,8 @@ static const short packetTypesGen3[] = {
     -1,     // Rumble triggers (unused)
     -1,     // Set motion event (unused)
     -1,     // Set RGB LED (unused)
-    -1,     // Execute Server Command (unused)
-    -1,     // Set Clipboard (unused)
-    -1,     // File transfer nonce request (unused)
     -1,     // Set Adaptive Triggers (unused)
+    -1,     // Execute Server Command (unused)
 };
 static const short packetTypesGen4[] = {
     0x0606, // Request IDR frame
@@ -177,10 +174,8 @@ static const short packetTypesGen4[] = {
     -1,     // Rumble triggers (unused)
     -1,     // Set motion event (unused)
     -1,     // Set RGB LED (unused)
-    -1,     // Execute Server Command (unused)
-    -1,     // Set Clipboard (unused)
-    -1,     // File transfer nonce request (unused)
     -1,     // Set Adaptive Triggers (unused)
+    -1,     // Execute Server Command (unused)
 };
 static const short packetTypesGen5[] = {
     0x0305, // Start A
@@ -195,10 +190,8 @@ static const short packetTypesGen5[] = {
     -1,     // Rumble triggers (unused)
     -1,     // Set motion event (unused)
     -1,     // Set RGB LED (unused)
-    -1,     // Execute Server Command (unused)
-    -1,     // Set Clipboard (unused)
-    -1,     // File transfer nonce request (unused)
     -1,     // Set Adaptive Triggers (unused)
+    0x3000, // Execute Server Command (Apollo extension)
 };
 static const short packetTypesGen7[] = {
     0x0305, // Start A
@@ -213,10 +206,8 @@ static const short packetTypesGen7[] = {
     -1,     // Rumble triggers (unused)
     -1,     // Set motion event (unused)
     -1,     // Set RGB LED (unused)
-    -1,     // Execute Server Command (unused)
-    -1,     // Set Clipboard (unused)
-    -1,     // File transfer nonce request (unused)
     -1,     // Set Adaptive Triggers (unused)
+    0x3000, // Execute Server Command (Apollo extension)
 };
 static const short packetTypesGen7Enc[] = {
     0x0302, // Request IDR frame
@@ -231,10 +222,8 @@ static const short packetTypesGen7Enc[] = {
     0x5500, // Rumble triggers (Sunshine protocol extension)
     0x5501, // Set motion event (Sunshine protocol extension)
     0x5502, // Set RGB LED (Sunshine protocol extension)
-    0x3000, // Execute Server Command (Apollo protocol extension)
-    0x3001, // Set Clipboard (Apollo protocol extension)
-    0x3002, // File transfer nonce request (Apollo protocol extension)
     0x5503, // Set Adaptive Triggers (Sunshine protocol extension)
+    0x3000, // Execute Server Command (Apollo extension)
 };
 
 static const char requestIdrFrameGen3[] = { 0, 0 };
@@ -322,7 +311,7 @@ static bool supportsIdrFrameRequest;
 int initializeControlStream(void) {
     stopping = false;
     PltCreateEvent(&idrFrameRequiredEvent);
-    LbqInitializeLinkedBlockingQueue(&invalidReferenceFrameTuples, 20);
+    LbqInitializeLinkedBlockingQueue(&referenceFrameControlQueue, 20);
     LbqInitializeLinkedBlockingQueue(&frameFecStatusQueue, 8); // Limits number of frame status reports per periodic ping interval
     LbqInitializeLinkedBlockingQueue(&asyncCallbackQueue, 30);
     PltCreateMutex(&enetMutex);
@@ -397,7 +386,7 @@ void destroyControlStream(void) {
     PltDestroyCryptoContext(encryptionCtx);
     PltDestroyCryptoContext(decryptionCtx);
     PltCloseEvent(&idrFrameRequiredEvent);
-    freeBasicLbqList(LbqDestroyLinkedBlockingQueue(&invalidReferenceFrameTuples));
+    freeBasicLbqList(LbqDestroyLinkedBlockingQueue(&referenceFrameControlQueue));
     freeBasicLbqList(LbqDestroyLinkedBlockingQueue(&frameFecStatusQueue));
     freeBasicLbqList(LbqDestroyLinkedBlockingQueue(&asyncCallbackQueue));
 
@@ -408,12 +397,15 @@ static void queueFrameInvalidationTuple(uint32_t startFrame, uint32_t endFrame) 
     LC_ASSERT(startFrame <= endFrame);
 
     if (isReferenceFrameInvalidationEnabled()) {
-        PQUEUED_FRAME_INVALIDATION_TUPLE qfit;
+        PQUEUED_REFERENCE_FRAME_CONTROL qfit;
         qfit = malloc(sizeof(*qfit));
         if (qfit != NULL) {
-            qfit->startFrame = startFrame;
-            qfit->endFrame = endFrame;
-            if (LbqOfferQueueItem(&invalidReferenceFrameTuples, qfit, &qfit->entry) == LBQ_BOUND_EXCEEDED) {
+            *qfit = (QUEUED_REFERENCE_FRAME_CONTROL){
+                .startFrame = startFrame,
+                .endFrame = endFrame,
+                .invalidate = true,
+            };
+            if (LbqOfferQueueItem(&referenceFrameControlQueue, qfit, &qfit->entry) == LBQ_BOUND_EXCEEDED) {
                 // Too many invalidation tuples, so we need an IDR frame now
                 Limelog("RFI range list reached maximum size limit\n");
                 free(qfit);
@@ -433,7 +425,7 @@ static void queueFrameInvalidationTuple(uint32_t startFrame, uint32_t endFrame) 
 void LiRequestIdrFrame(void) {
     // Any reference frame invalidation requests should be dropped now.
     // We require a full IDR frame to recover.
-    freeBasicLbqList(LbqFlushQueueItems(&invalidReferenceFrameTuples));
+    freeBasicLbqList(LbqFlushQueueItems(&referenceFrameControlQueue));
 
     // Request the IDR frame
     PltSetEvent(&idrFrameRequiredEvent);
@@ -445,9 +437,29 @@ void connectionDetectedFrameLoss(uint32_t startFrame, uint32_t endFrame) {
 }
 
 // When we receive a frame, update the number of our current frame
-void connectionReceivedCompleteFrame(uint32_t frameIndex) {
+// and send ACK control message if the frame is LTR
+void connectionReceivedCompleteFrame(uint32_t frameIndex, bool frameIsLTR) {
     lastGoodFrame = frameIndex;
     intervalGoodFrameCount++;
+
+    if (frameIsLTR && IS_SUNSHINE() && isReferenceFrameInvalidationEnabled()) {
+        // Queue LTR frame ACK control message
+        PQUEUED_REFERENCE_FRAME_CONTROL qfit;
+        qfit = malloc(sizeof(*qfit));
+        if (qfit != NULL) {
+            *qfit = (QUEUED_REFERENCE_FRAME_CONTROL){
+                .startFrame = frameIndex,
+                .invalidate = false,
+            };
+            if (LbqOfferQueueItem(&referenceFrameControlQueue, qfit, &qfit->entry) == LBQ_BOUND_EXCEEDED) {
+                // This shouldn't happen and indicates that something has gone wrong with the queue
+                LC_ASSERT(false);
+                Limelog("Couldn't queue LTR ACK because the list has reached maximum size limit\n");
+                free(qfit);
+                LiRequestIdrFrame();
+            }
+        }
+    }
 }
 
 void connectionSendFrameFecStatus(PSS_FRAME_FEC_STATUS fecStatus) {
@@ -1024,8 +1036,6 @@ static bool needsAsyncCallback(unsigned short packetType) {
            packetType == packetTypes[IDX_SET_MOTION_EVENT] ||
            packetType == packetTypes[IDX_SET_RGB_LED] ||
            packetType == packetTypes[IDX_HDR_INFO] ||
-           packetType == packetTypes[IDX_SET_CLIPBOARD] ||
-           packetType == packetTypes[IDX_FILE_TRANSFER_NONCE_REQUEST] ||
            packetType == packetTypes[IDX_DS_ADAPTIVE_TRIGGERS];
 }
 
@@ -1536,22 +1546,22 @@ static void requestIdrFrame(void) {
 }
 
 static void requestInvalidateReferenceFrames(uint32_t startFrame, uint32_t endFrame) {
-    int64_t payload[3];
-
     LC_ASSERT(startFrame <= endFrame);
     LC_ASSERT(isReferenceFrameInvalidationEnabled());
 
-    payload[0] = LE64(startFrame);
-    payload[1] = LE64(endFrame);
-    payload[2] = 0;
+    SS_RFI_REQUEST payload = {
+        .firstFrameIndex = LE32(startFrame),
+        .lastFrameIndex = LE32(endFrame),
+    };
 
     // Send the reference frame invalidation request and read the response
     if (!sendMessageAndDiscardReply(packetTypes[IDX_INVALIDATE_REF_FRAMES],
                                     sizeof(payload),
-                                    payload, CTRL_CHANNEL_URGENT,
+                                    &payload,
+                                    CTRL_CHANNEL_URGENT,
                                     ENET_PACKET_FLAG_RELIABLE,
                                     false)) {
-        Limelog("Request Invaldiate Reference Frames: Transaction failed: %d\n", (int)LastSocketError());
+        Limelog("Request Invalidate Reference Frames: Transaction failed: %d\n", (int)LastSocketError());
         ListenerCallbacks.connectionTerminated(LastSocketFail());
         return;
     }
@@ -1559,32 +1569,65 @@ static void requestInvalidateReferenceFrames(uint32_t startFrame, uint32_t endFr
     Limelog("Invalidate reference frame request sent (%d to %d)\n", startFrame, endFrame);
 }
 
-static void invalidateRefFramesFunc(void* context) {
+static void confirmLongtermReferenceFrame(uint32_t frameIndex) {
+    LC_ASSERT(isReferenceFrameInvalidationEnabled());
+
+    SS_LTR_FRAME_ACK payload = {
+        .frameIndex = LE32(frameIndex),
+    };
+
+    // Send LTR frame ACK and don't wait for response
+    if (!sendMessageAndForget(SS_LTR_FRAME_ACK_PTYPE,
+                              sizeof(payload),
+                              &payload,
+                              CTRL_CHANNEL_URGENT,
+                              ENET_PACKET_FLAG_RELIABLE,
+                              false)) {
+        Limelog("LTR frame ACK: Transaction failed: %d\n", (int)LastSocketError());
+        ListenerCallbacks.connectionTerminated(LastSocketFail());
+        return;
+    }
+}
+
+static void referenceFrameControlFunc(void* context) {
     LC_ASSERT(isReferenceFrameInvalidationEnabled());
 
     while (!PltIsThreadInterrupted(&invalidateRefFramesThread)) {
-        PQUEUED_FRAME_INVALIDATION_TUPLE qfit;
-        uint32_t startFrame;
-        uint32_t endFrame;
+        PQUEUED_REFERENCE_FRAME_CONTROL qfit;
+        uint32_t invalidateStartFrame;
+        uint32_t invalidateEndFrame;
+        bool invalidate = false;
 
-        // Wait for a reference frame invalidation request or a request to shutdown
-        if (LbqWaitForQueueElement(&invalidReferenceFrameTuples, (void**)&qfit) != LBQ_SUCCESS) {
+        // Wait for a reference frame control message or a request to shutdown
+        if (LbqWaitForQueueElement(&referenceFrameControlQueue, (void**)&qfit) != LBQ_SUCCESS) {
             // Bail if we're stopping
             return;
         }
 
-        startFrame = qfit->startFrame;
-        endFrame = qfit->endFrame;
-
-        // Aggregate all lost frames into one range
         do {
-            LC_ASSERT(qfit->endFrame >= endFrame);
-            endFrame = qfit->endFrame;
+            if (qfit->invalidate) {
+                if (!invalidate) {
+                    invalidateStartFrame = qfit->startFrame;
+                    invalidateEndFrame = qfit->endFrame;
+                    invalidate = true;
+                }
+                else {
+                    // Aggregate all lost frames into one range
+                    LC_ASSERT(qfit->endFrame >= invalidateEndFrame);
+                    invalidateEndFrame = qfit->endFrame;
+                }
+            }
+            else {
+                // Send LTR frame ACK
+                confirmLongtermReferenceFrame(qfit->startFrame);
+            }
             free(qfit);
-        } while (LbqPollQueueElement(&invalidReferenceFrameTuples, (void**)&qfit) == LBQ_SUCCESS);
+        } while (LbqPollQueueElement(&referenceFrameControlQueue, (void**)&qfit) == LBQ_SUCCESS);
 
-        // Send the reference frame invalidation request
-        requestInvalidateReferenceFrames(startFrame, endFrame);
+        if (invalidate) {
+            // Send the reference frame invalidation request
+            requestInvalidateReferenceFrames(invalidateStartFrame, invalidateEndFrame);
+        }
     }
 }
 
@@ -1598,8 +1641,8 @@ static void requestIdrFrameFunc(void* context) {
             return;
         }
 
-        // Any pending reference frame invalidation requests are now redundant
-        freeBasicLbqList(LbqFlushQueueItems(&invalidReferenceFrameTuples));
+        // Any pending RFI requests and LTR frame ACK messages are now redundant
+        freeBasicLbqList(LbqFlushQueueItems(&referenceFrameControlQueue));
 
         // Request the IDR frame
         requestIdrFrame();
@@ -1609,7 +1652,7 @@ static void requestIdrFrameFunc(void* context) {
 // Stops the control stream
 int stopControlStream(void) {
     stopping = true;
-    LbqSignalQueueShutdown(&invalidReferenceFrameTuples);
+    LbqSignalQueueShutdown(&referenceFrameControlQueue);
     LbqSignalQueueShutdown(&frameFecStatusQueue);
     LbqSignalQueueDrain(&asyncCallbackQueue);
     PltSetEvent(&idrFrameRequiredEvent);
@@ -1694,7 +1737,10 @@ bool isControlDataInTransit(void) {
 bool LiGetEstimatedRttInfo(uint32_t* estimatedRtt, uint32_t* estimatedRttVariance) {
     bool ret = false;
 
-    PltLockMutex(&enetMutex);
+    // We do not acquire enetMutex here because we're just reading metrics
+    // and observing a torn write every once in a while is totally fine.
+    // The peer pointer points to memory reserved inside the client object,
+    // so it's guaranteed that it will never go away underneath us.
     if (peer != NULL && peer->state == ENET_PEER_STATE_CONNECTED) {
         if (estimatedRtt != NULL) {
             *estimatedRtt = peer->roundTripTime;
@@ -1706,7 +1752,6 @@ bool LiGetEstimatedRttInfo(uint32_t* estimatedRtt, uint32_t* estimatedRttVarianc
 
         ret = true;
     }
-    PltUnlockMutex(&enetMutex);
 
     return ret;
 }
@@ -1994,7 +2039,7 @@ int startControlStream(void) {
 
     // Only create the reference frame invalidation thread if RFI is enabled
     if (isReferenceFrameInvalidationEnabled()) {
-        err = PltCreateThread("InvRefFrames", invalidateRefFramesFunc, NULL, &invalidateRefFramesThread);
+        err = PltCreateThread("InvRefFrames", referenceFrameControlFunc, NULL, &invalidateRefFramesThread);
         if (err != 0) {
             stopping = true;
             PltSetEvent(&idrFrameRequiredEvent);
@@ -2060,14 +2105,14 @@ int LiSendExecServerCmd(uint8_t cmdId) {
         packetTypes[IDX_EXEC_SERVER_CMD],
         sizeof(payload),
         payload,
-        CTRL_CHANNEL_SERVERCTL,
+        CTRL_CHANNEL_GENERIC,
         ENET_PACKET_FLAG_RELIABLE,
         false
     );
 }
 
 // Send a server cmd request to the streaming machine
-int LiSendEmptyPayload() {
+int LiSendEmptyPayload(void) {
     if (peer == NULL) {
         return -1;
     }
@@ -2076,8 +2121,9 @@ int LiSendEmptyPayload() {
         0x00,
         sizeof(payload),
         payload,
-        CTRL_CHANNEL_SERVERCTL,
+        CTRL_CHANNEL_GENERIC,
         ENET_PACKET_FLAG_RELIABLE,
         false
     );
 }
+
