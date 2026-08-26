@@ -1,103 +1,55 @@
-# VibeArtemis Build, Architecture & Maintenance Handoff
+# VibeArtemis — Project Handoff & Technical Summary
 
-## 1. Project & Repository Overview
-
-- **Repository**: `gabrielcruzg3/VibeArtemis` (Next-Gen Apollo & Moonlight Desktop Client)
-- **Active Branch**: `dev/agy`
-- **Current Version**: `0.1.0-alpha.1-agy`
-- **Platforms Supported**: Linux (Kubuntu 26.04+ / Debian / Generic Linux x86_64) and Windows (Windows 11 x64)
-- **Local Directory**: `/home/g3/Moonshine/VibeArtemis`
-- **Workspace Ecosystem**: Part of `~/Moonshine` (Vibepollo host, Artemis Android client, VibeArtemis desktop client)
+## 1. Project Overview
+- **Name**: VibeArtemis
+- **Role**: Next-Gen Apollo & Moonlight Desktop Client (Linux Kubuntu 26.04+ & Windows 11)
+- **Repository Root**: `/home/g3/Moonshine/VibeArtemis`
+- **Active Branch**: `dev/agy` (initial empty root on `main`)
+- **Release Milestone**: `v0.1.0-alpha.1-agy` (Commit: `b7e9aea`)
 
 ---
 
-## 2. Artemis Features for Desktop Overview
+## 2. Implemented Subsystems & Architecture
 
-VibeArtemis implements all features from Artemis Android on Linux and Windows desktop:
+### A. Apollo Virtual Display Auto-Negotiation
+- Location: [`app/backend/vdisplay_manager.h`](file:///home/g3/Moonshine/VibeArtemis/app/backend/vdisplay_manager.h), [`app/backend/vdisplay_manager.cpp`](file:///home/g3/Moonshine/VibeArtemis/app/backend/vdisplay_manager.cpp)
+- Functionality: Dynamically computes client monitor timings, arbitrary aspect ratios (16:9, 16:10, 21:9, 32:9), high refresh rates (up to 360Hz), and scale factors (20%-200%). Integrated directly into HTTP `/launch` requests in `NvHTTP::startApp`.
 
-| Feature | Subsystem / Implementation | Host Compatibility |
-| :--- | :--- | :--- |
-| **Apollo Virtual Display Negotiation** | `VirtualDisplayManager` calculates display timings, aspect ratios (21:9, 32:9, 16:10, 16:9), custom refresh rates (120/144/165/240Hz), and scale factors (e.g. 120%, 150%). | Apollo / Vibepollo |
-| **Smart Two-Way Clipboard Sync** | `ClipboardSyncManager` synchronizes host and client clipboards via `/actions/clipboard` (GET/POST) and control packets (`0x3001`). Includes loopback detection. | Apollo / Vibepollo |
-| **Remote Server Commands** | `ApolloClient` executes remote commands (lock host, switch display, toggle HDR, audio sinks, power states) via `/actions/servercmd` and control stream `0x3000`. | Apollo / Vibepollo |
-| **In-Game Overlay HUD & Back Menu** | `InGameOverlay` provides floating HUD / sidebar (`Ctrl+Alt+Shift+Q` or `Guide+Back`) with runtime video scaling, stats telemetry, mouse modes, and server commands. | All hosts |
-| **Video Scaling & Rotation** | Dynamic Fit / Fill / Stretch / Zoom modes and 90°/180°/270° stream rotation. | All hosts |
-| **Arbitrary Custom Resolutions & Bitrates** | Full custom resolution support and 1 Mbps step bitrate adjustments up to 150+ Mbps. | All hosts |
-| **Mouse & Touchpad Modes** | Relative capture, absolute cursor, trackpad gesture scrolling, and local hardware cursor emulation. | All hosts |
-| **Modern Dark-Mode Aesthetic** | Clean, responsive UI with host discovery (mDNS), pairing manager, and app grid. | All hosts |
+### B. Resolution & Refresh Rate Profile Manager
+- Location: [`app/backend/profile_manager.h`](file:///home/g3/Moonshine/VibeArtemis/app/backend/profile_manager.h), [`app/backend/profile_manager.cpp`](file:///home/g3/Moonshine/VibeArtemis/app/backend/profile_manager.cpp)
+- Features:
+  - Presets for 1080p, Ultrawide 21:9, Super Ultrawide 32:9, 16:10 Laptop/Deck, 4K HDR Cinema, and Esports 240Hz.
+  - DIY Custom Resolution & FPS creator with instant apply and profile saving.
+  - JSON persistence in `~/.config/VibeArtemis/profiles.json`.
+
+### C. Smart Bidirectional Clipboard Sync
+- Location: [`app/backend/clipboardsync.h`](file:///home/g3/Moonshine/VibeArtemis/app/backend/clipboardsync.h), [`app/backend/clipboardsync.cpp`](file:///home/g3/Moonshine/VibeArtemis/app/backend/clipboardsync.cpp)
+- Features: Automatic clipboard sync between host and client with 64-bit FNV hash deduplication and loopback suppression.
+
+### D. Apollo Protocol Extensions in C Core
+- Location: [`moonlight-common-c/moonlight-common-c/src/ControlStream.c`](file:///home/g3/Moonshine/VibeArtemis/moonlight-common-c/moonlight-common-c/src/ControlStream.c), [`Limelight.h`](file:///home/g3/Moonshine/VibeArtemis/moonlight-common-c/moonlight-common-c/src/Limelight.h)
+- Features:
+  - `0x3000`: Apollo Server Commands (`LiSendExecServerCmd`)
+  - `0x3001`: Apollo Clipboard payloads
+  - `0x3002`: Apollo Nonce requests
+  - `0x5503`: DualSense Adaptive Triggers
+
+### E. Advanced Desktop Settings UI
+- Location: [`app/gui/SettingsView.qml`](file:///home/g3/Moonshine/VibeArtemis/app/gui/SettingsView.qml), [`app/settings/streamingpreferences.h`](file:///home/g3/Moonshine/VibeArtemis/app/settings/streamingpreferences.h)
+- Controls: Profiles, DIY Custom Resolution/FPS, Virtual Display toggle & scale factor, Smart Clipboard toggles, Ultra-Low Latency mode, Low-Latency Frame Balancing, Aggressive FEC Packet Loss Protection, Full Color Range RGB (0-255), and Lite/Bottom Performance Overlays.
 
 ---
 
-## 3. Build & Test Commands
+## 3. Test & Build Commands
 
-From `/home/g3/Moonshine/VibeArtemis`:
-
-### Step 1: Configure CMake
 ```bash
-cmake -B build -G Ninja -S . \
-  -DBUILD_TESTS=ON \
-  -DCMAKE_BUILD_TYPE=Release
+# Run automated tests
+cmake -B build -G Ninja -S . -DBUILD_TESTS=ON && ninja -C build && ctest --test-dir build --output-on-failure
+
+# Build Qt6 GUI Client
+qmake6 moonlight-qt.pro && make -j$(nproc)
+
+# Re-package Debian distribution
+cp app/moonlight build/deb_staging/usr/bin/vibeartemis
+dpkg-deb --build --root-owner-group build/deb_staging build/cpack_artifacts/vibeartemis-0.1.0-alpha.1-agy-Linux.deb
 ```
-
-### Step 2: Build Binaries & Test Suite
-```bash
-ninja -C build -j$(nproc)
-```
-
-### Step 3: Run Full Test Suite
-```bash
-ctest --test-dir build --output-on-failure
-```
-
-### Step 4: Generate `.deb` Packages (Linux)
-```bash
-mkdir -p build/cpack_artifacts
-cpack --config build/CPackConfig.cmake -G DEB
-```
-
----
-
-## 4. Release History & Milestones
-
-| Version / Tag | Status | Test Suite | Release Description |
-| :--- | :--- | :--- | :--- |
-| **`v0.1.0-alpha.1-agy`** | **Active Milestone** | 100% Passing | Initial working desktop client with Apollo Virtual Display negotiation, Smart Clipboard Sync, In-game Overlay HUD, Server Commands, and custom resolution support. |
-
----
-
-## 5. Architectural Data Flow
-
-```
-+-------------------------------------------------------------------------+
-|                              VibeArtemis UI                            |
-|       (Host Discovery, Pairing Manager, App Grid, Settings, HUD)        |
-+-------------------+--------------------------------+--------------------+
-                    |                                |
-        +-----------v-----------+        +-----------v-----------+
-        |     Apollo Client     |        |   Session Coordinator |
-        | (HTTP/S + OTP + REST) |        |    (Streaming Engine) |
-        +-----------+-----------+        +-----------+-----------+
-                    |                                |
-        +-----------+-----------+        +-----------+-----------+
-        |   Apollo Endpoints    |        |  moonlight-common-c   |
-        |  - /actions/clipboard |        |  - Video/Audio RTP    |
-        |  - /actions/servercmd |        |  - Control Stream     |
-        |  - /bitrate           |        |    - 0x3000 ServerCmd |
-        |  - /serverinfo        |        |    - 0x3001 Clipboard |
-        +-----------------------+        |  - Input Stream       |
-                                         +-----------------------+
-```
-
----
-
-## 6. Service & Environment Reference
-
-| Subsystem | Port / Transport | Purpose |
-| :--- | :--- | :--- |
-| **GameStream HTTP** | `47989/TCP` | Legacy host discovery & pairing probe |
-| **GameStream HTTPS** | `47984/TCP` | Secure host launch, resume, app list, `/actions/clipboard`, `/bitrate` |
-| **Sunshine / Apollo Web** | `47990/HTTPS` | Web management & pairing |
-| **RTSP Handshake** | `48010/TCP` | Video / Audio session parameters setup |
-| **Control Stream** | `47999/UDP` (ENet) | Loss stats, IDR frame requests, server commands (`0x3000`), clipboard (`0x3001`) |
-| **Video Stream** | `47998/UDP` | RTP H.264 / HEVC / AV1 video packet flow |
-| **Audio Stream** | `48000/UDP` | RTP Opus audio packet flow |
