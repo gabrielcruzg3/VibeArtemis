@@ -84,13 +84,16 @@ CenteredGridView {
                     currentIndex: ProfileManager.activeProfileIndex
 
                     onActivated: {
-                        ProfileManager.applyProfile(index)
+                        ProfileManager.applyProfileIndex(index)
                     }
 
                     Connections {
                         target: ProfileManager
-                        onActiveProfileChanged: {
+                        function onActiveProfileIndexChanged() {
                             quickProfileCombo.currentIndex = ProfileManager.activeProfileIndex
+                        }
+                        function onProfilesChanged() {
+                            quickProfileCombo.model = ProfileManager.profileNames
                         }
                     }
 

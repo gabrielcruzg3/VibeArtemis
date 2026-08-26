@@ -167,7 +167,39 @@ bool ProfileManager::applyProfile(const QString& name) {
 
     saveProfiles();
     emit profileApplied(name);
+    emit activeProfileIndexChanged();
     return true;
+}
+
+QString ProfileManager::getActiveProfileName() const {
+    return m_ActiveProfileName;
+}
+
+void ProfileManager::setActiveProfileName(const QString& name) {
+    if (m_ActiveProfileName != name) {
+        applyProfile(name);
+    }
+}
+
+int ProfileManager::getActiveProfileIndex() const {
+    QStringList names = getProfileNames();
+    int idx = names.indexOf(m_ActiveProfileName);
+    return (idx >= 0) ? idx : 0;
+}
+
+void ProfileManager::setActiveProfileIndex(int index) {
+    QStringList names = getProfileNames();
+    if (index >= 0 && index < names.size()) {
+        applyProfile(names.at(index));
+    }
+}
+
+bool ProfileManager::applyProfileIndex(int index) {
+    QStringList names = getProfileNames();
+    if (index >= 0 && index < names.size()) {
+        return applyProfile(names.at(index));
+    }
+    return false;
 }
 
 bool ProfileManager::saveProfile(const QString& name, int width, int height, int fps, int bitrateKbps, bool useVirtualDisplay, int scaleFactor, bool enableHdr) {
