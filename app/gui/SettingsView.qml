@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.2
 import QtQuick.Window 2.2
 
 import StreamingPreferences 1.0
+import ProfileManager 1.0
 import ComputerManager 1.0
 import SdlGamepadKeyNavigation 1.0
 import SystemProperties 1.0

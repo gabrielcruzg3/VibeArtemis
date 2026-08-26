@@ -119,7 +119,7 @@ CenteredGridView {
             anchors.margins: 6
             radius: 16
             color: hostCardDelegate.activeFocus ? "#1e2640" : (hostCardDelegate.hovered ? "#161e33" : "#0f1626")
-            border.color: hostCardDelegate.activeFocus ? "#a855f7" : (hostCardDelegate.hovered ? "#38bdf8" : "rgba(255, 255, 255, 0.1)")
+            border.color: hostCardDelegate.activeFocus ? "#a855f7" : (hostCardDelegate.hovered ? "#38bdf8" : "#1affffff")
             border.width: hostCardDelegate.activeFocus ? 2 : 1
 
             Behavior on color { ColorAnimation { duration: 150 } }
@@ -157,7 +157,7 @@ CenteredGridView {
                     height: 22
                     width: statusRow.width + 12
                     radius: 11
-                    color: model.online ? (model.paired ? "rgba(16, 185, 129, 0.2)" : "rgba(245, 158, 11, 0.2)") : "rgba(100, 116, 139, 0.2)"
+                    color: model.online ? (model.paired ? "#3310b981" : "#33f59e0b") : "#3364748b"
                     border.color: model.online ? (model.paired ? "#10b981" : "#f59e0b") : "#64748b"
                     border.width: 1
 

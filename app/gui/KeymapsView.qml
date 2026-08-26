@@ -35,7 +35,7 @@ Flickable {
             height: 70
             radius: 12
             color: "#131a2b"
-            border.color: "rgba(255, 255, 255, 0.08)"
+            border.color: "#14ffffff"
 
             RowLayout {
                 anchors.fill: parent
@@ -80,7 +80,7 @@ Flickable {
             height: kbColumn.height + 32
             radius: 12
             color: "#0f1626"
-            border.color: "rgba(255, 255, 255, 0.08)"
+            border.color: "#14ffffff"
 
             Column {
                 id: kbColumn
@@ -99,7 +99,7 @@ Flickable {
                     }
                 }
 
-                Rectangle { width: parent.width; height: 1; color: "rgba(255, 255, 255, 0.06)" }
+                Rectangle { width: parent.width; height: 1; color: "#10ffffff" }
 
                 // Key rows
                 Component {
@@ -166,7 +166,7 @@ Flickable {
             height: gpColumn.height + 32
             radius: 12
             color: "#0f1626"
-            border.color: "rgba(255, 255, 255, 0.08)"
+            border.color: "#14ffffff"
 
             Column {
                 id: gpColumn
@@ -185,7 +185,7 @@ Flickable {
                     }
                 }
 
-                Rectangle { width: parent.width; height: 1; color: "rgba(255, 255, 255, 0.06)" }
+                Rectangle { width: parent.width; height: 1; color: "#10ffffff" }
 
                 Repeater {
                     model: [
@@ -206,7 +206,7 @@ Flickable {
             height: apColumn.height + 32
             radius: 12
             color: "#0f1626"
-            border.color: "rgba(255, 255, 255, 0.08)"
+            border.color: "#14ffffff"
 
             Column {
                 id: apColumn
@@ -225,7 +225,7 @@ Flickable {
                     }
                 }
 
-                Rectangle { width: parent.width; height: 1; color: "rgba(255, 255, 255, 0.06)" }
+                Rectangle { width: parent.width; height: 1; color: "#10ffffff" }
 
                 Repeater {
                     model: [

@@ -927,9 +927,9 @@ int main(int argc, char *argv[])
 #endif
 
     // This is necessary to show our icon correctly on Wayland
-    app.setDesktopFileName("com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "com.moonlight_stream.Moonlight");
-    qputenv("SDL_VIDEO_X11_WMCLASS", "com.moonlight_stream.Moonlight");
+    app.setDesktopFileName("vibeartemis");
+    qputenv("SDL_VIDEO_WAYLAND_WMCLASS", "vibeartemis");
+    qputenv("SDL_VIDEO_X11_WMCLASS", "vibeartemis");
 
     // Register our C++ types for QML
     qmlRegisterType<ComputerModel>("ComputerModel", 1, 0, "ComputerModel");
@@ -990,6 +990,7 @@ int main(int argc, char *argv[])
     }
 
     QQmlApplicationEngine engine;
+    engine.rootContext()->setContextProperty("ProfileManager", vibeartemis::ProfileManager::instance());
     QString initialView;
     bool hasGUI = true;
 
