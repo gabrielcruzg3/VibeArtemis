@@ -4,6 +4,7 @@ import QtQuick.Layouts 1.3
 
 import ComputerModel 1.0
 
+import ProfileManager 1.0
 import ComputerManager 1.0
 import StreamingPreferences 1.0
 import SystemProperties 1.0
@@ -15,10 +16,144 @@ CenteredGridView {
     id: pcGrid
     focus: true
     activeFocusOnTab: true
-    topMargin: 20
-    bottomMargin: 5
-    cellWidth: 310; cellHeight: 330;
+    topMargin: 10
+    bottomMargin: 10
+    cellWidth: 310; cellHeight: 350;
     objectName: qsTr("Computers")
+
+    header: Item {
+        width: pcGrid.width
+        height: 68
+        z: 10
+
+        Rectangle {
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.verticalCenter: parent.verticalCenter
+            width: Math.min(parent.width - 32, 940)
+            height: 52
+            radius: 12
+            color: "#131a2b"
+            border.color: "#1affffff"
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.leftMargin: 14
+                anchors.rightMargin: 14
+                spacing: 12
+
+                // Icon & Label
+                Row {
+                    spacing: 8
+                    Layout.alignment: Qt.AlignVCenter
+
+                    Rectangle {
+                        width: 32; height: 32; radius: 8
+                        color: "#7c3aed"
+                        anchors.verticalCenter: parent.verticalCenter
+                        Text {
+                            anchors.centerIn: parent
+                            text: "⚡"
+                            font.pixelSize: 16
+                        }
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        Label {
+                            text: qsTr("Streaming Profile")
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#ffffff"
+                        }
+                        Label {
+                            text: StreamingPreferences.width + "x" + StreamingPreferences.height + " @ " + StreamingPreferences.fps + " FPS"
+                            font.pixelSize: 10
+                            color: "#38bdf8"
+                        }
+                    }
+                }
+
+                Rectangle { width: 1; height: 26; color: "#20ffffff"; Layout.alignment: Qt.AlignVCenter }
+
+                // Profile ComboBox
+                ComboBox {
+                    id: quickProfileCombo
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    model: ProfileManager.profileNames
+                    currentIndex: ProfileManager.activeProfileIndex
+
+                    onActivated: {
+                        ProfileManager.applyProfile(index)
+                    }
+
+                    Connections {
+                        target: ProfileManager
+                        onActiveProfileChanged: {
+                            quickProfileCombo.currentIndex = ProfileManager.activeProfileIndex
+                        }
+                    }
+
+                    background: Rectangle {
+                        color: "#0f172a"
+                        radius: 8
+                        border.color: quickProfileCombo.activeFocus ? "#a855f7" : "#334155"
+                        border.width: 1
+                    }
+
+                    contentItem: Label {
+                        leftPadding: 12
+                        rightPadding: quickProfileCombo.indicator.width + quickProfileCombo.spacing
+                        text: quickProfileCombo.displayText
+                        font.pixelSize: 12
+                        font.bold: true
+                        color: "#e2e8f0"
+                        verticalAlignment: Text.AlignVCenter
+                        elide: Text.ElideRight
+                    }
+                }
+
+                // Virtual Display Toggle Pill
+                Rectangle {
+                    height: 32
+                    width: vdToggleRow.width + 16
+                    radius: 8
+                    color: StreamingPreferences.useVirtualDisplay ? "#1e1b4b" : "#1e293b"
+                    border.color: StreamingPreferences.useVirtualDisplay ? "#818cf8" : "#475569"
+                    border.width: 1
+                    Layout.alignment: Qt.AlignVCenter
+
+                    MouseArea {
+                        anchors.fill: parent
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            StreamingPreferences.useVirtualDisplay = !StreamingPreferences.useVirtualDisplay
+                        }
+                    }
+
+                    Row {
+                        id: vdToggleRow
+                        anchors.centerIn: parent
+                        spacing: 6
+
+                        Text {
+                            text: StreamingPreferences.useVirtualDisplay ? "🖥️" : "📺"
+                            font.pixelSize: 12
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+
+                        Label {
+                            text: StreamingPreferences.useVirtualDisplay ? qsTr("Virtual Display: ON") : qsTr("Virtual Display: OFF")
+                            font.pixelSize: 11
+                            font.bold: true
+                            color: StreamingPreferences.useVirtualDisplay ? "#a5b4fc" : "#94a3b8"
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     Component.onCompleted: {
         // Don't show any highlighted item until interacting with them.
@@ -247,8 +382,41 @@ CenteredGridView {
                 }
             }
 
+            // Active Profile Target Info
+            Rectangle {
+                anchors.bottom: connectBtn.top
+                anchors.bottomMargin: 6
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.margins: 12
+                height: 22
+                radius: 6
+                color: "#111827"
+                border.color: "#1e293b"
+
+                Row {
+                    anchors.centerIn: parent
+                    spacing: 6
+
+                    Text {
+                        text: "⚡"
+                        font.pixelSize: 10
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Label {
+                        text: StreamingPreferences.width + "x" + StreamingPreferences.height + " @" + StreamingPreferences.fps + "Hz"
+                        font.pixelSize: 10
+                        font.bold: true
+                        color: "#38bdf8"
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+                }
+            }
+
             // --- Bottom Quick Action Button ---
             Rectangle {
+                id: connectBtn
                 anchors.bottom: parent.bottom
                 anchors.left: parent.left
                 anchors.right: parent.right
