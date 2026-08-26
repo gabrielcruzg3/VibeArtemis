@@ -65,6 +65,12 @@ When launching or resuming an app session:
 
 ## 4. Visual Revamp & Vibepollo Integration Roadmap (Upcoming Versions)
 
+### 🎯 Immediate Next Steps
+- 🎨 **Further UI / Theme Enhancements**: Customize colors, card animations, typography, or add icons and artwork.
+- 🎮 **Gamepad / Controller Mapping Screen**: Complete or refine the Gamepad Mapper UI (`GamepadMapper.qml`).
+- 🖥️ **In-Stream Radial / Quick Action Overlay**: Build an in-stream Apollo popup menu (to switch displays, toggle HDR, mute host, etc. during active stream).
+- 📦 **Windows Packaging / Cross-Compilation Setup**: Add CMake/CPack or GitHub Actions workflows for Windows `.zip` / `.exe` releases.
+
 ### 🎨 Visual & UI Revamp Plan
 1. **Modern Dark Glassmorphism Theme**:
    - Replace legacy controls with custom Vibepollo-inspired theme tokens:
@@ -83,3 +89,4 @@ When launching or resuming an app session:
 1. **Live Host Telemetry**: Real-time stats from Vibepollo's HTTP API (GPU load, encoder temperature, packet drops).
 2. **Multi-Monitor / Display Routing**: Interactive display switcher and virtual display manager directly from the client.
 3. **WebRTC Hybrid Transport**: Optional modern WebRTC data-channel and streaming protocol exploration alongside classic RTSP/ENet.
+

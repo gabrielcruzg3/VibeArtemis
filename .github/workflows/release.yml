@@ -1,0 +1,216 @@
+name: Build & Release VibeArtemis
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  # =======================================================
+  # Linux Build & Packaging (.deb)
+  # =======================================================
+  build-linux:
+    name: Build Linux (.deb)
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential cmake git qmake6 qt6-base-dev qt6-declarative-dev \
+            qt6-svg-dev qt6-quickcontrols2-5-dev libsdl2-dev libsdl2-ttf-dev \
+            libopus-dev libssl-dev libavcodec-dev libavutil-dev libswscale-dev \
+            libva-dev libvdpau-dev libdrm-dev libx11-dev libwayland-dev
+
+      - name: Build Unit Tests with CMake
+        run: |
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=ON
+          cmake --build . -j$(nproc)
+          ctest --output-on-failure
+
+      - name: Build VibeArtemis GUI Client (qmake6)
+        run: |
+          qmake6 moonlight-qt.pro
+          make -j$(nproc)
+
+      - name: Assemble Debian Package (.deb)
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME:-v0.2.0}"
+          VERSION="${TAG_NAME#v}"
+          
+          mkdir -p build/deb_staging/usr/bin build/deb_staging/usr/share/applications build/deb_staging/usr/share/icons/hicolor/scalable/apps build/deb_staging/DEBIAN build/cpack_artifacts
+          cp app/moonlight build/deb_staging/usr/bin/vibeartemis
+          chmod +x build/deb_staging/usr/bin/vibeartemis
+          ln -sf vibeartemis build/deb_staging/usr/bin/moonlight
+          
+          cp app/res/moonlight.svg build/deb_staging/usr/share/icons/hicolor/scalable/apps/vibeartemis.svg
+          
+          cat <<EOF > build/deb_staging/usr/share/applications/vibeartemis.desktop
+          [Desktop Entry]
+          Name=VibeArtemis
+          Comment=Next-Gen Apollo & Moonlight Desktop Client
+          Exec=vibeartemis
+          Icon=vibeartemis
+          Terminal=false
+          Type=Application
+          Categories=Game;Network;AudioVideo;
+          StartupWMClass=vibeartemis
+          EOF
+          
+          ln -sf vibeartemis.desktop build/deb_staging/usr/share/applications/com.moonlight_stream.Moonlight.desktop
+          
+          cat <<EOF > build/deb_staging/DEBIAN/control
+          Package: vibeartemis
+          Version: ${VERSION}
+          Section: video
+          Priority: optional
+          Architecture: amd64
+          Maintainer: gabrielcruzg3
+          Depends: libc6, libqt6core6, libqt6gui6, libqt6qml6, libqt6quick6, libqt6quickcontrols2-6, libqt6svg6, libsdl2-2.0-0, libsdl2-ttf-2.0-0, libopus0, libssl3, libavcodec60 | libavcodec61, libavutil58 | libavutil59, libswscale7 | libswscale8, libva2, libvdpau1, libdrm2, libx11-6, libwayland-client0
+          Description: VibeArtemis: Next-Gen Apollo & Moonlight Desktop Client
+           VibeArtemis is a next-generation desktop client for Apollo / Vibepollo, Sunshine,
+           and NVIDIA GameStream with virtual display support, smart clipboard, and custom profiles.
+          EOF
+          
+          dpkg-deb --build --root-owner-group build/deb_staging build/cpack_artifacts/vibeartemis-${VERSION}-Linux.deb
+
+      - name: Upload Linux Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibeartemis-linux-deb
+          path: build/cpack_artifacts/*.deb
+
+  # =======================================================
+  # Windows Build & Packaging (.zip & .exe)
+  # =======================================================
+  build-windows:
+    name: Build Windows 11 (x64)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Setup Prebuilt Windows Dependencies
+        shell: pwsh
+        run: |
+          ./setup-deps.ps1
+
+      - name: Install Qt 6.8
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.0'
+          host: 'windows'
+          target: 'desktop'
+          arch: 'win64_msvc2022_64'
+          modules: 'qt5compat'
+
+      - name: Setup MSVC Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Build VibeArtemis (Windows x64)
+        shell: cmd
+        run: |
+          qmake -r moonlight-qt.pro CONFIG+=release
+          nmake
+
+      - name: Bundle Windows Runtime with windeployqt
+        shell: pwsh
+        run: |
+          $TAG_NAME = if ($env:GITHUB_REF_NAME) { $env:GITHUB_REF_NAME } else { "v0.2.0" }
+          $VERSION = $TAG_NAME.TrimStart('v')
+          $DeployDir = "build/deploy-windows-x64"
+          New-Item -ItemType Directory -Path $DeployDir -Force | Out-Null
+          
+          # Copy compiled binary
+          Copy-Item "app/release/moonlight.exe" "$DeployDir/vibeartemis.exe" -Force
+          Copy-Item "app/release/moonlight.exe" "$DeployDir/Moonlight.exe" -Force
+          
+          # Copy dependencies
+          Copy-Item "libs/windows/x64/bin/*" "$DeployDir/" -Recurse -Force -ErrorAction SilentlyContinue
+          
+          # Run windeployqt
+          windeployqt --qmldir app/gui --release --no-translations "$DeployDir/vibeartemis.exe"
+          
+          # Package ZIP
+          Compress-Archive -Path "$DeployDir/*" -DestinationPath "build/vibeartemis-${VERSION}-windows-x64.zip" -Force
+
+      - name: Upload Windows x64 Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vibeartemis-windows-x64-zip
+          path: build/*.zip
+
+  # =======================================================
+  # Publish to GitHub Release
+  # =======================================================
+  publish-release:
+    name: Publish Release Assets
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+          merge-multiple: true
+
+      - name: Generate Release Notes
+        run: |
+          TAG_NAME="${GITHUB_REF_NAME}"
+          cat <<EOF > release_notes.md
+          # VibeArtemis ${TAG_NAME}
+
+          **VibeArtemis** is a next-generation desktop streaming client for [Apollo / Vibepollo](https://github.com/gabrielcruzg3/Vibepollo), [Sunshine](https://github.com/LizardByte/Sunshine), and NVIDIA GameStream.
+
+          > [!WARNING]
+          > **Disclaimer / Use at Your Own Risk**
+          > These pre-built binaries are unofficial community builds provided as-is without warranties of any kind. Installing and running pre-built packages is entirely at the user's own discretion, safety, and risk. If you have security or compatibility concerns, you are strongly encouraged to inspect the source code and compile the binaries directly on your machine.
+
+          ---
+
+          ### ✨ Release Highlights
+          - ⚡ **Quick Streaming Profile Selector**: Real-time preset switching on Home/Computers page.
+          - 🖥️ **Apollo Virtual Display Auto-Negotiation**: Automatic host display timing and aspect ratio management.
+          - ⌨️ **In-Stream Apollo Quick Actions Menu (\`Ctrl + Alt + Shift + A\`)**: Instant HUD to switch displays, toggle HDR, mute host audio, sleep, and reboot.
+          - 🎨 **Revamped Dark Glassmorphism Theme**: High-contrast obsidian slate styling with glowing neon indicators.
+          - 📋 **Bidirectional Smart Clipboard Sync**: Instant clipboard sharing between client and host.
+          - 🛡️ **Ultra-Low Latency Mode & Packet Loss Protection**: Zero-buffer frame pacing.
+
+          ---
+
+          ### 📦 Installation
+          - **Linux (Debian / Ubuntu / Kubuntu)**:
+            \`\`\`bash
+            sudo dpkg -i vibeartemis-*.deb
+            vibeartemis
+            \`\`\`
+          - **Windows 11 / 10 (x64)**:
+            Extract \`vibeartemis-*-windows-x64.zip\` and run \`vibeartemis.exe\`.
+          EOF
+
+      - name: Upload Assets to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_assets/*
+          body_path: release_notes.md
+          prerelease: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

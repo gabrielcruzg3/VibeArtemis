@@ -59,6 +59,12 @@ dpkg-deb --build --root-owner-group build/deb_staging build/cpack_artifacts/vibe
 
 ## 4. Upcoming Versions Roadmap
 
+### 🎯 Immediate Next Steps
+- 🎨 **Further UI / Theme Enhancements**: Customize colors (obsidian/slate palettes & neon accents), card animations, typography, SVG icons, and artwork.
+- 🎮 **Gamepad / Controller Mapping Screen**: Complete and refine the Gamepad Mapper UI ([`GamepadMapper.qml`](file:///home/g3/Moonshine/VibeArtemis/app/gui/GamepadMapper.qml)) with visual button/axis bindings and deadzone calibration.
+- 🖥️ **In-Stream Radial / Quick Action Overlay**: Build an in-stream Apollo popup/radial menu (switch displays, toggle HDR, mute host audio, sleep/reboot, adjust bitrate during active stream).
+- 📦 **Windows Packaging & Cross-Compilation Setup**: Add CMake/CPack and GitHub Actions CI/CD workflows for Windows `.zip` / `.exe` releases.
+
 ### 🎨 Phase 2: Visual Overhaul & Vibepollo Design Language
 1. **Modern Dark Glassmorphism UI**:
    - Custom sleek Obsidian/Slate palette (`#0b0f19`, `#111827`) with translucent glass panels and neon accents (Neon Violet `#a855f7`, Electric Cyan `#06b6d4`).
@@ -71,3 +77,4 @@ dpkg-deb --build --root-owner-group build/deb_staging build/cpack_artifacts/vibe
 1. **Live Host Telemetry**: Real-time GPU load, encoder FPS, and network statistics via Vibepollo REST API.
 2. **Interactive Display Routing**: Select and configure host virtual displays directly from client UI.
 3. **WebRTC Transport Exploration**: WebRTC data-channel and streaming protocol support.
+
