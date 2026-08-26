@@ -6,6 +6,7 @@
 - **Repository Root**: `/home/g3/Moonshine/VibeArtemis`
 - **Active Branch**: `dev/agy` (initial empty root on `main`)
 - **Release Milestone**: `v0.1.0-alpha.1-agy` (Commit: `b7e9aea`)
+- **Release URL**: [https://github.com/gabrielcruzg3/VibeArtemis/releases/tag/v0.1.0-alpha.1-agy](https://github.com/gabrielcruzg3/VibeArtemis/releases/tag/v0.1.0-alpha.1-agy)
 
 ---
 
@@ -53,3 +54,20 @@ qmake6 moonlight-qt.pro && make -j$(nproc)
 cp app/moonlight build/deb_staging/usr/bin/vibeartemis
 dpkg-deb --build --root-owner-group build/deb_staging build/cpack_artifacts/vibeartemis-0.1.0-alpha.1-agy-Linux.deb
 ```
+
+---
+
+## 4. Upcoming Versions Roadmap
+
+### 🎨 Phase 2: Visual Overhaul & Vibepollo Design Language
+1. **Modern Dark Glassmorphism UI**:
+   - Custom sleek Obsidian/Slate palette (`#0b0f19`, `#111827`) with translucent glass panels and neon accents (Neon Violet `#a855f7`, Electric Cyan `#06b6d4`).
+   - Redesigned host cards with animated live status, encoder badges (NVENC, QuickSync, VA-API, AMF), and ping metrics.
+2. **Revamped In-Stream HUD & Quick Action Menu**:
+   - Translucent stream telemetry HUD.
+   - Quick popup / radial menu for remote Apollo commands (Display switch, HDR toggle, sleep, reboot).
+
+### 🚀 Phase 3: Deep Vibepollo Host Integration
+1. **Live Host Telemetry**: Real-time GPU load, encoder FPS, and network statistics via Vibepollo REST API.
+2. **Interactive Display Routing**: Select and configure host virtual displays directly from client UI.
+3. **WebRTC Transport Exploration**: WebRTC data-channel and streaming protocol support.
