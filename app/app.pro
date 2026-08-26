@@ -206,6 +206,7 @@ SOURCES += \
     backend/systemproperties.cpp \
     backend/vdisplay_manager.cpp \
     backend/clipboardsync.cpp \
+    backend/profile_manager.cpp \
     wm.cpp
 
 HEADERS += \
@@ -214,6 +215,7 @@ HEADERS += \
     backend/nvapp.h \
     backend/vdisplay_manager.h \
     backend/clipboardsync.h \
+    backend/profile_manager.h \
     cli/pair.h \
     settings/compatfetcher.h \
     settings/mappingfetcher.h \

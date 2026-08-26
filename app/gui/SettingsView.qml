@@ -1017,7 +1017,149 @@ Flickable {
 
             Column {
                 anchors.fill: parent
-                spacing: 6
+                spacing: 8
+
+                // --- Resolution & Refresh Rate Profiles ---
+                Label {
+                    text: "<font color=\"#8be9fd\"><b>" + qsTr("Resolution & Refresh Rate Profiles") + "</b></font>"
+                    font.pointSize: 12
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 8
+
+                    ComboBox {
+                        id: profileComboBox
+                        width: parent.width - deleteProfileBtn.width - 8
+                        model: ProfileManager.getProfileNames()
+                        Component.onCompleted: {
+                            var names = ProfileManager.getProfileNames()
+                            for (var i = 0; i < names.length; i++) {
+                                if (names[i].indexOf(StreamingPreferences.width + "x" + StreamingPreferences.height) !== -1) {
+                                    currentIndex = i
+                                    break
+                                }
+                            }
+                        }
+                        onActivated: {
+                            ProfileManager.applyProfile(currentText)
+                            customWidthField.text = StreamingPreferences.width.toString()
+                            customHeightField.text = StreamingPreferences.height.toString()
+                            customFpsField.text = StreamingPreferences.fps.toString()
+                        }
+                    }
+
+                    Button {
+                        id: deleteProfileBtn
+                        text: qsTr("Delete")
+                        font.pointSize: 10
+                        onClicked: {
+                            ProfileManager.deleteProfile(profileComboBox.currentText)
+                            profileComboBox.model = ProfileManager.getProfileNames()
+                        }
+                    }
+                }
+
+                // --- Custom DIY Resolution & Refresh Rate ---
+                Label {
+                    text: "<font color=\"#8be9fd\"><b>" + qsTr("Custom DIY Resolution & FPS") + "</b></font>"
+                    font.pointSize: 12
+                    topPadding: 4
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 6
+
+                    TextField {
+                        id: customWidthField
+                        width: 75
+                        placeholderText: "Width"
+                        text: StreamingPreferences.width.toString()
+                        validator: IntValidator { bottom: 320; top: 7680 }
+                        font.pointSize: 11
+                    }
+
+                    Label {
+                        text: "x"
+                        font.pointSize: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    TextField {
+                        id: customHeightField
+                        width: 75
+                        placeholderText: "Height"
+                        text: StreamingPreferences.height.toString()
+                        validator: IntValidator { bottom: 240; top: 4320 }
+                        font.pointSize: 11
+                    }
+
+                    Label {
+                        text: "@"
+                        font.pointSize: 12
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    TextField {
+                        id: customFpsField
+                        width: 55
+                        placeholderText: "FPS"
+                        text: StreamingPreferences.fps.toString()
+                        validator: IntValidator { bottom: 15; top: 360 }
+                        font.pointSize: 11
+                    }
+
+                    Label {
+                        text: "Hz"
+                        font.pointSize: 11
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    Button {
+                        text: qsTr("Apply")
+                        font.pointSize: 10
+                        onClicked: {
+                            var w = parseInt(customWidthField.text)
+                            var h = parseInt(customHeightField.text)
+                            var f = parseInt(customFpsField.text)
+                            if (w > 0 && h > 0 && f > 0) {
+                                ProfileManager.setCustomResolution(w, h, f)
+                            }
+                        }
+                    }
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 8
+
+                    TextField {
+                        id: newProfileNameField
+                        width: parent.width - saveProfileBtn.width - 8
+                        placeholderText: qsTr("Profile Name (e.g. 3440x1440 144Hz)")
+                        font.pointSize: 11
+                    }
+
+                    Button {
+                        id: saveProfileBtn
+                        text: qsTr("Save Profile")
+                        font.pointSize: 10
+                        onClicked: {
+                            var name = newProfileNameField.text.trim()
+                            if (name.length === 0) {
+                                name = customWidthField.text + "x" + customHeightField.text + " " + customFpsField.text + " FPS"
+                            }
+                            var w = parseInt(customWidthField.text)
+                            var h = parseInt(customHeightField.text)
+                            var f = parseInt(customFpsField.text)
+                            ProfileManager.saveProfile(name, w, h, f, StreamingPreferences.bitrateKbps, StreamingPreferences.useVirtualDisplay, StreamingPreferences.resolutionScaleFactor, StreamingPreferences.enableHdr)
+                            profileComboBox.model = ProfileManager.getProfileNames()
+                            newProfileNameField.text = ""
+                        }
+                    }
+                }
 
                 CheckBox {
                     id: virtualDisplayCheck
