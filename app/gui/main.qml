@@ -457,6 +457,23 @@ ApplicationWindow {
             }
 
             NavigableToolButton {
+                id: keymapsButton
+
+                iconSource: "qrc:/res/ic_videogame_asset_white_48px.svg"
+
+                onClicked: navigateTo("qrc:/gui/KeymapsView.qml", KeymapsView)
+
+                Keys.onDownPressed: {
+                    stackView.currentItem.forceActiveFocus(Qt.TabFocus)
+                }
+
+                ToolTip.delay: 1000
+                ToolTip.timeout: 3000
+                ToolTip.visible: hovered
+                ToolTip.text: qsTr("Keymaps & Streaming Shortcuts")
+            }
+
+            NavigableToolButton {
                 id: settingsButton
 
                 iconSource:  "qrc:/res/settings.svg"

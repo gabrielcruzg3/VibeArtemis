@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(VibeArtemis VERSION 0.1.0 LANGUAGES C CXX)
+project(VibeArtemis VERSION 0.2.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -65,7 +65,7 @@ endif()
 # CPack Packaging Configuration
 set(CPACK_PACKAGE_NAME "vibeartemis")
 set(CPACK_PACKAGE_VENDOR "VibeArtemis Team")
-set(CPACK_PACKAGE_VERSION "0.1.0-alpha.1-agy")
+set(CPACK_PACKAGE_VERSION "0.2.0-alpha.1-agy")
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "VibeArtemis: Next-Gen Apollo & Moonlight Desktop Client")
 set(CPACK_PACKAGE_CONTACT "gabrielcruzg3")
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")

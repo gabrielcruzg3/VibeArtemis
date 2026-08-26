@@ -1334,6 +1334,16 @@ Flickable {
                         ToolTip.text: qsTr("Positions the performance stats overlay at the bottom of the screen.")
                     }
                 }
+
+                Button {
+                    width: parent.width
+                    text: qsTr("⌨️ View Keymaps & Streaming Shortcuts")
+                    font.pointSize: 11
+                    font.bold: true
+                    onClicked: {
+                        stackView.push("qrc:/gui/KeymapsView.qml")
+                    }
+                }
             }
         }
 
