@@ -1573,6 +1573,11 @@ void DrmRenderer::notifyOverlayUpdated(Overlay::OverlayType type)
             overlayRect.x = 0;
             overlayRect.y = 0;
         }
+        else if (type == Overlay::OverlayQuickActionMenu) {
+            // Center
+            overlayRect.x = (m_OutputRect.w - newSurface->w) / 2;
+            overlayRect.y = (m_OutputRect.h - newSurface->h) / 2;
+        }
 
         overlayRect.w = newSurface->w;
         overlayRect.h = newSurface->h;

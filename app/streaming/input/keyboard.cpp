@@ -168,6 +168,12 @@ void SdlInputHandler::performSpecialKeyCombo(KeyCombo combo)
         updateKeyboardGrabState();
         break;
 
+    case KeyComboToggleQuickActionMenu:
+        SDL_LogInfo(SDL_LOG_CATEGORY_APPLICATION,
+                    "Detected Apollo Quick Action Menu toggle combo");
+        Session::get()->toggleQuickActionMenu();
+        break;
+
     default:
         Q_UNREACHABLE();
     }
@@ -183,6 +189,38 @@ void SdlInputHandler::handleKeyEvent(SDL_KeyboardEvent* event)
         // Ignore repeat key down events
         SDL_assert(event->state == SDL_PRESSED);
         return;
+    }
+
+    // If Apollo Quick Action Menu is open, intercept selection keys
+    if (Session::get()->isQuickActionMenuOpen() && event->state == SDL_PRESSED) {
+        if (event->keysym.sym == SDLK_1 || event->keysym.sym == SDLK_F1) {
+            Session::get()->executeApolloQuickAction(1);
+            return;
+        }
+        else if (event->keysym.sym == SDLK_2 || event->keysym.sym == SDLK_F2) {
+            Session::get()->executeApolloQuickAction(2);
+            return;
+        }
+        else if (event->keysym.sym == SDLK_3 || event->keysym.sym == SDLK_F3) {
+            Session::get()->executeApolloQuickAction(3);
+            return;
+        }
+        else if (event->keysym.sym == SDLK_4 || event->keysym.sym == SDLK_F4) {
+            Session::get()->executeApolloQuickAction(4);
+            return;
+        }
+        else if (event->keysym.sym == SDLK_5 || event->keysym.sym == SDLK_F5) {
+            Session::get()->executeApolloQuickAction(5);
+            return;
+        }
+        else if (event->keysym.sym == SDLK_6 || event->keysym.sym == SDLK_F6) {
+            Session::get()->executeApolloQuickAction(6);
+            return;
+        }
+        else if (event->keysym.sym == SDLK_ESCAPE) {
+            Session::get()->toggleQuickActionMenu();
+            return;
+        }
     }
 
     // Check for our special key combos

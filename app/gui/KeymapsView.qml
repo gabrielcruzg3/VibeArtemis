@@ -144,6 +144,7 @@ Flickable {
 
                 Repeater {
                     model: [
+                        { keys: "Ctrl + Alt + Shift + A", action: qsTr("Apollo Quick Actions"), desc: qsTr("Opens in-stream menu to switch displays, toggle HDR, mute, sleep, reboot") },
                         { keys: "Ctrl + Alt + Shift + Q", action: qsTr("Quit / Disconnect"), desc: qsTr("Ends the current streaming session immediately") },
                         { keys: "Ctrl + Alt + Shift + S", action: qsTr("Performance Overlay"), desc: qsTr("Toggles FPS, bitrate, and latency stats HUD") },
                         { keys: "Ctrl + Alt + Shift + M", action: qsTr("Toggle Mouse Mode"), desc: qsTr("Switches between direct capture and remote desktop cursor") },

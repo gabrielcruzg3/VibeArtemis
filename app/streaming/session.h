@@ -129,6 +129,9 @@ public:
     // Apollo / Vibepollo extensions
     bool sendServerCommand(uint8_t cmdId);
     bool setDynamicBitrate(uint32_t bitrateKbps);
+    void toggleQuickActionMenu();
+    bool isQuickActionMenuOpen() const;
+    void executeApolloQuickAction(int actionCode);
 
 signals:
     void stageStarting(QString stage);

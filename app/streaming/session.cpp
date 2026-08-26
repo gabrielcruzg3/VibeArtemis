@@ -2377,3 +2377,82 @@ DispatchDeferredCleanup:
     // reference.
     QThreadPool::globalInstance()->start(new DeferredSessionCleanupTask(this));
 }
+
+void Session::toggleQuickActionMenu()
+{
+    bool currentlyEnabled = m_OverlayManager.isOverlayEnabled(Overlay::OverlayQuickActionMenu);
+    if (!currentlyEnabled) {
+        const char* menuText =
+            "=====================================================\n"
+            "   APOLLO IN-STREAM QUICK ACTIONS (Ctrl+Alt+Shift+A)\n"
+            "=====================================================\n"
+            "  [1] Switch Host Virtual Display\n"
+            "  [2] Toggle Host HDR Mode\n"
+            "  [3] Mute Host PC Audio\n"
+            "  [4] Toggle Low-Latency Frame Balance\n"
+            "  [5] Put Host PC to Sleep\n"
+            "  [6] Reboot Host PC\n"
+            "  [Esc] Close Menu\n"
+            "=====================================================";
+        m_OverlayManager.updateOverlayText(Overlay::OverlayQuickActionMenu, menuText);
+        m_OverlayManager.setOverlayState(Overlay::OverlayQuickActionMenu, true);
+    } else {
+        m_OverlayManager.setOverlayState(Overlay::OverlayQuickActionMenu, false);
+    }
+}
+
+bool Session::isQuickActionMenuOpen() const
+{
+    return const_cast<Session*>(this)->m_OverlayManager.isOverlayEnabled(Overlay::OverlayQuickActionMenu);
+}
+
+void Session::executeApolloQuickAction(int actionCode)
+{
+    // Close menu first
+    m_OverlayManager.setOverlayState(Overlay::OverlayQuickActionMenu, false);
+
+    switch (actionCode) {
+    case 1: { // Switch Display
+        LiSendExecServerCmd(1);
+        m_OverlayManager.updateOverlayText(Overlay::OverlayStatusUpdate, "Apollo: Switched Virtual Display");
+        m_OverlayManager.setOverlayState(Overlay::OverlayStatusUpdate, true);
+        break;
+    }
+    case 2: { // Toggle HDR
+        LiSendExecServerCmd(2);
+        m_OverlayManager.updateOverlayText(Overlay::OverlayStatusUpdate, "Apollo: Toggled Host HDR Mode");
+        m_OverlayManager.setOverlayState(Overlay::OverlayStatusUpdate, true);
+        break;
+    }
+    case 3: { // Mute Host
+        LiSendExecServerCmd(3);
+        m_OverlayManager.updateOverlayText(Overlay::OverlayStatusUpdate, "Apollo: Muted Host Speakers");
+        m_OverlayManager.setOverlayState(Overlay::OverlayStatusUpdate, true);
+        break;
+    }
+    case 4: { // Low Latency Frame Balance
+        if (m_Preferences) {
+            m_Preferences->lowLatencyFrameBalance = !m_Preferences->lowLatencyFrameBalance;
+            m_Preferences->save();
+        }
+        m_OverlayManager.updateOverlayText(Overlay::OverlayStatusUpdate, "Apollo: Low-Latency Frame Balance Toggled");
+        m_OverlayManager.setOverlayState(Overlay::OverlayStatusUpdate, true);
+        break;
+    }
+    case 5: { // Sleep Host
+        LiSendExecServerCmd(5);
+        m_OverlayManager.updateOverlayText(Overlay::OverlayStatusUpdate, "Apollo: Host Sleep Requested");
+        m_OverlayManager.setOverlayState(Overlay::OverlayStatusUpdate, true);
+        break;
+    }
+    case 6: { // Reboot Host
+        LiSendExecServerCmd(6);
+        m_OverlayManager.updateOverlayText(Overlay::OverlayStatusUpdate, "Apollo: Host Reboot Requested");
+        m_OverlayManager.setOverlayState(Overlay::OverlayStatusUpdate, true);
+        break;
+    }
+    default:
+        break;
+    }
+}
+
