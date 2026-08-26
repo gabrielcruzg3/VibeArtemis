@@ -1009,6 +1009,193 @@ Flickable {
         }
 
         GroupBox {
+            id: artemisSettingsGroupBox
+            width: (parent.width - (parent.leftPadding + parent.rightPadding))
+            padding: 12
+            title: "<font color=\"#ff79c6\">" + qsTr("Artemis & Apollo Features") + "</font>"
+            font.pointSize: 12
+
+            Column {
+                anchors.fill: parent
+                spacing: 6
+
+                CheckBox {
+                    id: virtualDisplayCheck
+                    width: parent.width
+                    text: qsTr("Apollo Virtual Display Auto-Negotiation")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.useVirtualDisplay
+                    onCheckedChanged: {
+                        StreamingPreferences.useVirtualDisplay = checked
+                    }
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Automatically adjusts the host virtual display resolution, ultrawide aspect ratio, and refresh rate to perfectly match this client device.")
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 10
+                    enabled: StreamingPreferences.useVirtualDisplay
+
+                    Label {
+                        text: qsTr("Resolution Scale:")
+                        font.pointSize: 11
+                        anchors.verticalCenter: parent.verticalCenter
+                    }
+
+                    SpinBox {
+                        id: resScaleSpinBox
+                        from: 20
+                        to: 200
+                        stepSize: 5
+                        value: StreamingPreferences.resolutionScaleFactor
+                        textFromValue: function(value) { return value + "%"; }
+                        valueFromText: function(text) { return parseInt(text); }
+                        onValueModified: {
+                            StreamingPreferences.resolutionScaleFactor = value
+                        }
+                    }
+                }
+
+                CheckBox {
+                    id: smartClipboardCheck
+                    width: parent.width
+                    text: qsTr("Smart Two-Way Clipboard Sync")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.smartClipboardSync
+                    onCheckedChanged: {
+                        StreamingPreferences.smartClipboardSync = checked
+                    }
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Automatically synchronizes copied text between the host machine and your local desktop with loopback suppression.")
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 15
+                    enabled: StreamingPreferences.smartClipboardSync
+
+                    CheckBox {
+                        id: clipboardNotifCheck
+                        text: qsTr("Show sync toast")
+                        font.pointSize: 11
+                        checked: StreamingPreferences.clipboardNotification
+                        onCheckedChanged: {
+                            StreamingPreferences.clipboardNotification = checked
+                        }
+                    }
+
+                    CheckBox {
+                        id: hideClipboardCheck
+                        text: qsTr("Mask content")
+                        font.pointSize: 11
+                        checked: StreamingPreferences.hideClipboardContent
+                        onCheckedChanged: {
+                            StreamingPreferences.hideClipboardContent = checked
+                        }
+                    }
+                }
+
+                CheckBox {
+                    id: ultraLowLatencyCheck
+                    width: parent.width
+                    text: qsTr("Ultra-Low Latency Mode")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.ultraLowLatency
+                    onCheckedChanged: {
+                        StreamingPreferences.ultraLowLatency = checked
+                    }
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Disables decoder queue buffering to achieve the lowest possible input-to-display frame latency.")
+                }
+
+                CheckBox {
+                    id: lowLatencyFrameBalanceCheck
+                    width: parent.width
+                    text: qsTr("Low-Latency Frame Balancing")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.lowLatencyFrameBalance
+                    onCheckedChanged: {
+                        StreamingPreferences.lowLatencyFrameBalance = checked
+                    }
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Maintains rock-steady frame pacing and minimizes jitter during wireless network fluctuations.")
+                }
+
+                CheckBox {
+                    id: preventPacketLossCheck
+                    width: parent.width
+                    text: qsTr("Aggressive Packet Loss Protection (FEC)")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.preventPacketLoss
+                    onCheckedChanged: {
+                        StreamingPreferences.preventPacketLoss = checked
+                    }
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Enables aggressive Forward Error Correction recovery packets to prevent video artifacting on lossy Wi-Fi networks.")
+                }
+
+                CheckBox {
+                    id: fullColorRangeCheck
+                    width: parent.width
+                    text: qsTr("Full Color Range (0-255 RGB)")
+                    font.pointSize: 12
+                    checked: StreamingPreferences.fullColorRange
+                    onCheckedChanged: {
+                        StreamingPreferences.fullColorRange = checked
+                    }
+                    ToolTip.delay: 1000
+                    ToolTip.timeout: 5000
+                    ToolTip.visible: hovered
+                    ToolTip.text: qsTr("Uses full dynamic range video output (0-255) instead of limited TV standard (16-235).")
+                }
+
+                Row {
+                    width: parent.width
+                    spacing: 15
+
+                    CheckBox {
+                        id: perfOverlayLiteCheck
+                        text: qsTr("Lite Overlay")
+                        font.pointSize: 11
+                        checked: StreamingPreferences.perfOverlayLite
+                        onCheckedChanged: {
+                            StreamingPreferences.perfOverlayLite = checked
+                        }
+                        ToolTip.delay: 1000
+                        ToolTip.timeout: 5000
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Displays a minimalist, single-line performance HUD.")
+                    }
+
+                    CheckBox {
+                        id: perfOverlayBottomCheck
+                        text: qsTr("Bottom Overlay")
+                        font.pointSize: 11
+                        checked: StreamingPreferences.perfOverlayBottom
+                        onCheckedChanged: {
+                            StreamingPreferences.perfOverlayBottom = checked
+                        }
+                        ToolTip.delay: 1000
+                        ToolTip.timeout: 5000
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Positions the performance stats overlay at the bottom of the screen.")
+                    }
+                }
+            }
+        }
+
+        GroupBox {
             id: uiSettingsGroupBox
             width: (parent.width - (parent.leftPadding + parent.rightPadding))
             padding: 12

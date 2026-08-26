@@ -53,6 +53,20 @@
 #define SER_LANGUAGE "language"
 #define SER_RENDERER "renderer"
 
+// Artemis & Apollo Settings
+#define SER_USE_VIRTUAL_DISPLAY "usevirtualdisplay"
+#define SER_RES_SCALE_FACTOR "resscalefactor"
+#define SER_SMART_CLIPBOARD "smartclipboard"
+#define SER_CLIPBOARD_NOTIF "clipboardnotif"
+#define SER_HIDE_CLIPBOARD_CONTENT "hideclipboardcontent"
+#define SER_ULTRA_LOW_LATENCY "ultralowlatency"
+#define SER_LOW_LATENCY_FRAME_BALANCE "lowlatencyframebalance"
+#define SER_PREVENT_PACKET_LOSS "preventpacketloss"
+#define SER_FULL_COLOR_RANGE "fullcolorrange"
+#define SER_PERF_OVERLAY_LITE "perfoverlaylite"
+#define SER_PERF_OVERLAY_BOTTOM "perfoverlaybottom"
+#define SER_CUSTOM_RESOLUTION "customresolution"
+
 #define CURRENT_DEFAULT_VER 2
 
 static StreamingPreferences* s_GlobalPrefs;
@@ -193,6 +207,20 @@ void StreamingPreferences::reload()
         videoCodecConfig = VCC_AUTO;
         enableHdr = true;
     }
+
+    // Artemis & Apollo Settings
+    useVirtualDisplay = settings.value(SER_USE_VIRTUAL_DISPLAY, true).toBool();
+    resolutionScaleFactor = settings.value(SER_RES_SCALE_FACTOR, 100).toInt();
+    smartClipboardSync = settings.value(SER_SMART_CLIPBOARD, true).toBool();
+    clipboardNotification = settings.value(SER_CLIPBOARD_NOTIF, true).toBool();
+    hideClipboardContent = settings.value(SER_HIDE_CLIPBOARD_CONTENT, false).toBool();
+    ultraLowLatency = settings.value(SER_ULTRA_LOW_LATENCY, false).toBool();
+    lowLatencyFrameBalance = settings.value(SER_LOW_LATENCY_FRAME_BALANCE, false).toBool();
+    preventPacketLoss = settings.value(SER_PREVENT_PACKET_LOSS, false).toBool();
+    fullColorRange = settings.value(SER_FULL_COLOR_RANGE, false).toBool();
+    perfOverlayLite = settings.value(SER_PERF_OVERLAY_LITE, false).toBool();
+    perfOverlayBottom = settings.value(SER_PERF_OVERLAY_BOTTOM, false).toBool();
+    customResolution = settings.value(SER_CUSTOM_RESOLUTION, "").toString();
 }
 
 bool StreamingPreferences::retranslate()
@@ -362,6 +390,20 @@ void StreamingPreferences::save()
     settings.setValue(SER_SWAPFACEBUTTONS, swapFaceButtons);
     settings.setValue(SER_CAPTURESYSKEYS, captureSysKeysMode);
     settings.setValue(SER_KEEPAWAKE, keepAwake);
+
+    // Artemis & Apollo Settings
+    settings.setValue(SER_USE_VIRTUAL_DISPLAY, useVirtualDisplay);
+    settings.setValue(SER_RES_SCALE_FACTOR, resolutionScaleFactor);
+    settings.setValue(SER_SMART_CLIPBOARD, smartClipboardSync);
+    settings.setValue(SER_CLIPBOARD_NOTIF, clipboardNotification);
+    settings.setValue(SER_HIDE_CLIPBOARD_CONTENT, hideClipboardContent);
+    settings.setValue(SER_ULTRA_LOW_LATENCY, ultraLowLatency);
+    settings.setValue(SER_LOW_LATENCY_FRAME_BALANCE, lowLatencyFrameBalance);
+    settings.setValue(SER_PREVENT_PACKET_LOSS, preventPacketLoss);
+    settings.setValue(SER_FULL_COLOR_RANGE, fullColorRange);
+    settings.setValue(SER_PERF_OVERLAY_LITE, perfOverlayLite);
+    settings.setValue(SER_PERF_OVERLAY_BOTTOM, perfOverlayBottom);
+    settings.setValue(SER_CUSTOM_RESOLUTION, customResolution);
 }
 
 int StreamingPreferences::getDefaultBitrate(int width, int height, int fps, bool yuv444)

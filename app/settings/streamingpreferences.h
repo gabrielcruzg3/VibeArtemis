@@ -158,6 +158,20 @@ public:
     Q_PROPERTY(CaptureSysKeysMode captureSysKeysMode MEMBER captureSysKeysMode NOTIFY captureSysKeysModeChanged)
     Q_PROPERTY(Language language MEMBER language NOTIFY languageChanged);
 
+    // Artemis & Apollo Extensions
+    Q_PROPERTY(bool useVirtualDisplay MEMBER useVirtualDisplay NOTIFY useVirtualDisplayChanged)
+    Q_PROPERTY(int resolutionScaleFactor MEMBER resolutionScaleFactor NOTIFY resolutionScaleFactorChanged)
+    Q_PROPERTY(bool smartClipboardSync MEMBER smartClipboardSync NOTIFY smartClipboardSyncChanged)
+    Q_PROPERTY(bool clipboardNotification MEMBER clipboardNotification NOTIFY clipboardNotificationChanged)
+    Q_PROPERTY(bool hideClipboardContent MEMBER hideClipboardContent NOTIFY hideClipboardContentChanged)
+    Q_PROPERTY(bool ultraLowLatency MEMBER ultraLowLatency NOTIFY ultraLowLatencyChanged)
+    Q_PROPERTY(bool lowLatencyFrameBalance MEMBER lowLatencyFrameBalance NOTIFY lowLatencyFrameBalanceChanged)
+    Q_PROPERTY(bool preventPacketLoss MEMBER preventPacketLoss NOTIFY preventPacketLossChanged)
+    Q_PROPERTY(bool fullColorRange MEMBER fullColorRange NOTIFY fullColorRangeChanged)
+    Q_PROPERTY(bool perfOverlayLite MEMBER perfOverlayLite NOTIFY perfOverlayLiteChanged)
+    Q_PROPERTY(bool perfOverlayBottom MEMBER perfOverlayBottom NOTIFY perfOverlayBottomChanged)
+    Q_PROPERTY(QString customResolution MEMBER customResolution NOTIFY customResolutionChanged)
+
     Q_INVOKABLE bool retranslate();
 
     // Directly accessible members for preferences
@@ -201,6 +215,20 @@ public:
     CaptureSysKeysMode captureSysKeysMode;
     RendererSelection rendererSelection;
 
+    // Artemis & Apollo Extension members
+    bool useVirtualDisplay;
+    int resolutionScaleFactor;
+    bool smartClipboardSync;
+    bool clipboardNotification;
+    bool hideClipboardContent;
+    bool ultraLowLatency;
+    bool lowLatencyFrameBalance;
+    bool preventPacketLoss;
+    bool fullColorRange;
+    bool perfOverlayLite;
+    bool perfOverlayBottom;
+    QString customResolution;
+
 signals:
     void displayModeChanged();
     void bitrateChanged();
@@ -238,6 +266,20 @@ signals:
     void keepAwakeChanged();
     void languageChanged();
     void rendererSelectionChanged();
+
+    // Artemis signals
+    void useVirtualDisplayChanged();
+    void resolutionScaleFactorChanged();
+    void smartClipboardSyncChanged();
+    void clipboardNotificationChanged();
+    void hideClipboardContentChanged();
+    void ultraLowLatencyChanged();
+    void lowLatencyFrameBalanceChanged();
+    void preventPacketLossChanged();
+    void fullColorRangeChanged();
+    void perfOverlayLiteChanged();
+    void perfOverlayBottomChanged();
+    void customResolutionChanged();
 
 private:
     explicit StreamingPreferences(QQmlEngine *qmlEngine);
